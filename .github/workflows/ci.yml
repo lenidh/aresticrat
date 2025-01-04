@@ -11,6 +11,7 @@ jobs:
   test:
     name: Test - ${{ matrix.name }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Toolchain - 1.75.0
