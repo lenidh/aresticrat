@@ -85,6 +85,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    steps:
       - name: Setup Artifact Cache
         uses: actions/cache@v4
         with:
