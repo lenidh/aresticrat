@@ -82,6 +82,7 @@ jobs:
           echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
   upload:
     name: Upload
+    needs: build
     permissions:
       contents: write
     runs-on: ubuntu-latest
