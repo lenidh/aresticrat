@@ -27,17 +27,17 @@ jobs:
             target: x86_64-pc-windows-msvc
             toolchain: 1.75.0
 
-          # - name: macOS x86_64
-          #   tag: macos-x86_64
-          #   runs-on: macos-latest
-          #   target: x86_64-apple-darwin
-          #   toolchain: 1.75.0
+          - name: macOS x86_64
+            tag: macos-x86_64
+            runs-on: macos-latest
+            target: x86_64-apple-darwin
+            toolchain: 1.75.0
 
-          # - name: macOS AArch64
-          #   tag: macos-aarch64
-          #   runs-on: macos-latest
-          #   target: aarch64-apple-darwin
-          #   toolchain: 1.75.0
+          - name: macOS AArch64
+            tag: macos-aarch64
+            runs-on: macos-latest
+            target: aarch64-apple-darwin
+            toolchain: 1.75.0
 
     runs-on: ${{ matrix.runs-on }}
     steps:
@@ -85,13 +85,13 @@ jobs:
       - name: Restore build artifacts
         uses: actions/download-artifact@v4
         with:
-          path: build-artifacts
+          path: artifacts
           merge-multiple: true
       - name: Compute checksums
         shell: bash
         run: |
-          echo $(cd "build-artifacts" && shasum -a 1 *) > sha1sum.txt
-          echo $(cd "build-artifacts" && shasum -a 256 *) > sha256sum.txt
+          echo "$(cd "artifacts" && shasum -a 1 *)" > sha1sum.txt
+          echo "$(cd "artifacts" && shasum -a 256 *)" > sha256sum.txt
       - name: Save checksums
         uses: actions/upload-artifact@v4
         with:
@@ -114,9 +114,6 @@ jobs:
       - name: Upload artifacts to release
         shell: bash
         run: |
-          set -x
-          ls -laR
-
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
           for file in *; do
