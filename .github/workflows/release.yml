@@ -11,8 +11,6 @@ env:
 jobs:
   build:
     name: Build - ${{ matrix.name }}
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -73,16 +71,38 @@ jobs:
           # Collect artifacts
           mkdir -p "${RELEASE_DIR}"
           mv "${BIN_OUTPUT}" "${RELEASE_DIR}/${BIN_RELEASE}"
-          echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
       - name: Save artifacts
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.tag }}
           path: ${{ env.RELEASE_DIR }}
           retention-days: 1
+  hash:
+    name: Compute checksums
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build-artifacts
+          merge-multiple: true
+      - name: Compute checksums
+        shell: bash
+        run: |
+          echo $(cd "build-artifacts" && shasum -a 1 "${BIN_RELEASE}") > sha1sum.txt
+          echo $(cd "build-artifacts" && shasum -a 256 "${BIN_RELEASE}") > sha256sum.txt
+      - name: Save checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: |
+            sha1sum.txt
+            sha256sum.txt
+          retention-days: 1
   upload:
     name: Upload
-    needs: build
+    needs: [ build, hash ]
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -90,7 +110,6 @@ jobs:
       - name: Restore artifacts
         uses: actions/download-artifact@v4
         with:
-          path: ${{ env.RELEASE_DIR }}
           merge-multiple: true
       - name: Upload artifacts to release
         shell: bash
@@ -100,7 +119,7 @@ jobs:
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
-          for file in ${RELEASE_DIR}/*; do
+          for file in *; do
             filename=$(basename -- "${file}")
             curl \
               --fail-with-body -sS \
@@ -110,4 +129,3 @@ jobs:
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "${UPLOAD_URL}?name=${filename}"
           done
-
