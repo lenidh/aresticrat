@@ -1,0 +1,128 @@
+
+on:
+  release:
+    types: [published]
+
+env:
+  # The project name specified in Cargo.toml
+  PROJECT_NAME: aresticrat
+  RELEASE_DIR: release
+
+jobs:
+  build:
+    name: Build - ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            tag: linux-x86_64
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            toolchain: 1.75.0
+
+          - name: Windows x86_64
+            tag: windows-x86_64
+            runs-on: windows-latest
+            target: x86_64-pc-windows-msvc
+            toolchain: 1.75.0
+
+          - name: macOS x86_64
+            tag: macos-x86_64
+            runs-on: macos-latest
+            target: x86_64-apple-darwin
+            toolchain: 1.75.0
+
+          - name: macOS AArch64
+            tag: macos-aarch64
+            runs-on: macos-latest
+            target: aarch64-apple-darwin
+            toolchain: 1.75.0
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "${{ matrix.target }}"
+          toolchain: "${{ matrix.toolchain }}"
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build Binary
+        run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+      - name: Upload artifacts
+        shell: bash
+        run: |
+          BIN_SUFFIX=""
+          if [[ "${{ matrix.runs-on }}" == "windows-latest" ]]; then
+            BIN_SUFFIX=".exe"
+          fi
+
+          # The built binary output location
+          BIN_OUTPUT_DIR="target/${{ matrix.target }}/release"
+          BIN_OUTPUT_FILE="${PROJECT_NAME}${BIN_SUFFIX}"
+          BIN_OUTPUT="${BIN_OUTPUT_DIR}/${BIN_OUTPUT_FILE}"
+
+          # Define a better name for the final binary
+          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.tag }}${BIN_SUFFIX}"
+
+          # Collect artifacts
+          mkdir -p "${RELEASE_DIR}"
+          mv "${BIN_OUTPUT}" "${RELEASE_DIR}/${BIN_RELEASE}"
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.tag }}
+          path: ${{ env.RELEASE_DIR }}
+          retention-days: 1
+  hash:
+    name: Compute checksums
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Compute checksums
+        shell: bash
+        run: |
+          echo "$(cd "artifacts" && shasum -a 1 *)" > sha1sum.txt
+          echo "$(cd "artifacts" && shasum -a 256 *)" > sha256sum.txt
+      - name: Save checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: |
+            sha1sum.txt
+            sha256sum.txt
+          retention-days: 1
+  upload:
+    name: Upload
+    needs: [ build, hash ]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+      - name: Upload artifacts to release
+        shell: bash
+        run: |
+          EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
+          UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
+          for file in *; do
+            filename=$(basename -- "${file}")
+            curl \
+              --fail-with-body -sS \
+              -X POST \
+              --data-binary @"${file}" \
+              -H 'Content-Type: application/octet-stream' \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${UPLOAD_URL}?name=${filename}"
+          done

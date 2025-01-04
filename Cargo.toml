@@ -1,5 +1,5 @@
 [package]
-name = "aresticrat"
+name = "aresticrat" # Adjust name in workflows after change
 version = "0.1.0"
 edition = "2021"
 
