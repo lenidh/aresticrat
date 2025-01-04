@@ -1,7 +1,10 @@
 use anyhow::{Context, Result};
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
 use std::{
-    env, error::Error, io::ErrorKind, path::{Path, PathBuf}
+    env,
+    error::Error,
+    io::ErrorKind,
+    path::{Path, PathBuf},
 };
 
 use config::{BackupOptions, Config, ForgetOptions};
