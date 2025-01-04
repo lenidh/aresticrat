@@ -68,7 +68,7 @@ jobs:
           echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
-          UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
+          UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
           curl \
             --fail-with-body -sS \
             -X POST \
