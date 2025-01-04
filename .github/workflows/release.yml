@@ -90,6 +90,7 @@ jobs:
       - name: Restore artifacts
         uses: actions/download-artifact@v4
         with:
+          path: ${{ env.RELEASE_DIR }}
           merge-multiple: true
       - name: Upload artifacts to release
         shell: bash
