@@ -94,6 +94,7 @@ jobs:
       - name: Upload artifacts to release
         shell: bash
         run: |
+          set -x
           ls -laR
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
