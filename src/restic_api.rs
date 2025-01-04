@@ -79,8 +79,6 @@ impl Api {
         S: AsRef<str>,
     {
         let mut forget_cmd = self.command(repo_name, repo.path(), repo.key());
-        forget_cmd.env("RESTIC_REPOSITORY", repo.path());
-        forget_cmd.env("RESTIC_PASSWORD", repo.key());
         forget_cmd.arg("forget");
         if dry_run {
             forget_cmd.arg("--dry-run");
