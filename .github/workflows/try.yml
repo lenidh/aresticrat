@@ -7,8 +7,8 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  release:
-    name: Release - ${{ matrix.platform.os-name }}
+  test-platforms:
+    name: Test platfroms - ${{ matrix.name }}
     strategy:
       matrix:
         include:
@@ -20,15 +20,15 @@ jobs:
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-musl
 
-          # - os-name: linux-aarch64
+          # - name: linux-aarch64
           #   runs-on: ubuntu-latest
           #   target: aarch64-unknown-linux-musl
 
-          - os-name: windows-x86_64
+          - oname: windows-x86_64
             runs-on: windows-latest
             target: x86_64-pc-windows-msvc
 
-          - os-name: macos-x86_64
+          - name: macos-x86_64
             runs-on: macos-latest
             target: x86_64-apple-darwin
 
@@ -40,7 +40,40 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: "${{ matrix.target }}"
-      - name: Setup Cache
+      - name: Setup cache
         uses: Swatinem/rust-cache@v2
-      - name: Build Binary
-        run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+      - name: Run tests
+        run: cargo test --verbose --locked --release --target ${{ matrix.target }}
+  test-toolchains:
+    name: Test versions - ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: Rust 1.75.0
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            toolchain: 1.75.0
+
+          - oname: Rust stable
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            toolchain: stable
+
+          - name: Rust nightly
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            toolchain: nightly
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "${{ matrix.target }}"
+          toolchain: "${{ matrix.toolchain }}"
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --verbose --locked --release --target ${{ matrix.target }}
