@@ -3,6 +3,7 @@ on:
   push:
     branches-ignore:
       - 'wip/**'
+      - 'pr/**'
   pull_request:
     types: [opened, synchronize]
 
@@ -27,20 +28,10 @@ jobs:
             target: x86_64-unknown-linux-musl
             toolchain: nightly
 
-          # - name: Freebsd-x86_64
-          #   runs-on: ubuntu-latest
-          #   target: x86_64-unknown-freebsd
-          #   toolchain: 1.75.0
-
           - name: Target - Linux-x86_64
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-musl
             toolchain: 1.75.0
-
-          # - name: Linux-aarch64
-          #   runs-on: ubuntu-latest
-          #   target: aarch64-unknown-linux-musl
-          #   toolchain: 1.75.0
 
           - name: Target - Windows-x86_64
             runs-on: windows-latest
