@@ -8,7 +8,7 @@ env:
   PROJECT_NAME: aresticrat
 
 jobs:
-  release:
+  build:
     name: Build - ${{ matrix.name }}
     permissions:
       contents: write
@@ -20,12 +20,6 @@ jobs:
             tag: linux-x86_64
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            toolchain: 1.75.0
-
-          - name: Linux AArch64
-            tag: linux-aarch64
-            runs-on: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
             toolchain: 1.75.0
 
           - name: Windows x86_64
@@ -55,10 +49,16 @@ jobs:
         with:
           targets: "${{ matrix.target }}"
           toolchain: "${{ matrix.toolchain }}"
-      - name: Setup Cache
+      - name: Setup Rust Cache
         uses: Swatinem/rust-cache@v2
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+      - name: Setup Artifact Cache
+        uses: actions/cache@v4
+        with:
+          path: .dist
+          key: release-artifact-cache-${{github.run_id}}
+          enableCrossOsArchive: true
       - name: Upload Artifacts
         shell: bash
         run: |
@@ -80,11 +80,23 @@ jobs:
           mkdir -p "${RELEASE_DIR}"
           mv "${BIN_OUTPUT}" ".dist/${BIN_RELEASE}"
           echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
-
-          # Upload artifacts
+  upload:
+    name: Upload
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+      - name: Setup Artifact Cache
+        uses: actions/cache@v4
+        with:
+          path: .dist
+          key: release-artifact-cache-${{github.run_id}}
+          enableCrossOsArchive: true
+      - name: Upload Artifacts
+        shell: bash
+        run: |
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
-          for file in ${RELEASE_DIR}/*; do
+          for file in .dist/*; do
             filename=$(basename -- "${file}")
             curl \
               --fail-with-body -sS \
@@ -94,3 +106,4 @@ jobs:
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               "${UPLOAD_URL}?name=${filename}"
           done
+
