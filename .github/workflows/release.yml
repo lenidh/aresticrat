@@ -49,17 +49,11 @@ jobs:
         with:
           targets: "${{ matrix.target }}"
           toolchain: "${{ matrix.toolchain }}"
-      - name: Setup Rust Cache
+      - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Build Binary
         run: cargo build --verbose --locked --release --target ${{ matrix.target }}
-      - name: Setup Artifact Cache
-        uses: actions/cache@v4
-        with:
-          path: .dist
-          key: release-artifact-cache-${{github.run_id}}
-          enableCrossOsArchive: true
-      - name: Upload Artifacts
+      - name: Upload artifacts
         shell: bash
         run: |
           BIN_SUFFIX=""
@@ -80,6 +74,12 @@ jobs:
           mkdir -p "${RELEASE_DIR}"
           mv "${BIN_OUTPUT}" ".dist/${BIN_RELEASE}"
           echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.tag }}
+          path: .dist
+          retention-days: 1
   upload:
     name: Upload
     needs: build
@@ -87,15 +87,15 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - name: Setup Artifact Cache
-        uses: actions/cache@v4
+      - name: Restore artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: .dist
-          key: release-artifact-cache-${{github.run_id}}
-          enableCrossOsArchive: true
-      - name: Upload Artifacts
+          merge-multiple: true
+      - name: Upload artifacts to release
         shell: bash
         run: |
+          ls -lR
+
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
           for file in .dist/*; do
