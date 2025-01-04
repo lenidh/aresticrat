@@ -44,6 +44,8 @@ jobs:
       - name: Upload Artifacts
         shell: bash
         run: |
+          set -x
+
           BIN_SUFFIX=""
           if [[ "${{ matrix.runs-on }}" == "windows-latest" ]]; then
             BIN_SUFFIX=".exe"
