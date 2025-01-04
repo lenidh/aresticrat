@@ -10,6 +10,8 @@ env:
 jobs:
   release:
     name: Build - ${{ matrix.name }}
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -69,17 +71,14 @@ jobs:
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url | cut -d'{' -f1)
-          curl \
-            --fail-with-body -sS \
-            -X POST \
-            --data-binary @"${RELEASE_DIR}/${BIN_RELEASE}" \
-            -H 'Content-Type: application/octet-stream' \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${UPLOAD_URL}?name=${BIN_RELEASE}"
-          curl \
-            --fail-with-body -sS \
-            -X POST \
-            --data-binary @"${RELEASE_DIR}/${BIN_RELEASE}.sha256sum" \
-            -H 'Content-Type: application/octet-stream' \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${UPLOAD_URL}?name=${BIN_RELEASE}.sha256sum"
+
+          for file in ${RELEASE_DIR}/*; do
+            filename=$(basename -- "${file}")
+            curl \
+              --fail-with-body -sS \
+              -X POST \
+              --data-binary @"${file}" \
+              -H 'Content-Type: application/octet-stream' \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "${UPLOAD_URL}?name=${filename}"
+          done

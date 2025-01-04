@@ -4,8 +4,8 @@ on:
     branches-ignore:
       - 'wip/**'
       - 'pr/**'
-  pull_request:
-    types: [opened, synchronize]
+#  pull_request:
+#    types: [opened, synchronize]
 
 jobs:
   test:
