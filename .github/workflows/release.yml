@@ -63,7 +63,7 @@ jobs:
           mkdir -p "${RELEASE_DIR}"
 
           mv "${BIN_OUTPUT}" ".dist/${BIN_RELEASE}"
-          echo $(cd "${RELEASE_DIR}" && sha256sum "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
+          echo $(cd "${RELEASE_DIR}" && shasum -a 256 "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
