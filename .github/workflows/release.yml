@@ -1,0 +1,84 @@
+
+on:
+  release:
+    types: [published]
+
+env:
+  # The project name specified in Cargo.toml
+  PROJECT_NAME: aresticrat
+
+jobs:
+  release:
+    name: Build - ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: Linux-x86_64
+            runs-on: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            toolchain: 1.75.0
+
+          - name: Windows-x86_64
+            runs-on: windows-latest
+            target: x86_64-pc-windows-msvc
+            toolchain: 1.75.0
+
+          - name: macOS-x86_64
+            runs-on: macos-latest
+            target: x86_64-apple-darwin
+            toolchain: 1.75.0
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "${{ matrix.target }}"
+          toolchain: "${{ matrix.toolchain }}"
+      - name: Setup Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build Binary
+        run: cargo build --verbose --locked --release --target ${{ matrix.target }}
+      - name: Upload Artifacts
+        shell: bash
+        run: |
+          BIN_SUFFIX=""
+          if [[ "${{ matrix.runs-on }}" == "windows-latest" ]]; then
+            BIN_SUFFIX=".exe"
+          fi
+
+          # The built binary output location
+          BIN_OUTPUT_DIR="target/${{ matrix.target }}/release"
+          BIN_OUTPUT_FILE="${PROJECT_NAME}${BIN_SUFFIX}"
+          BIN_OUTPUT="${BIN_OUTPUT_DIR}/${BIN_OUTPUT_FILE}"
+
+          # Define a better name for the final binary
+          BIN_RELEASE="${PROJECT_NAME}-${{ matrix.name }}${BIN_SUFFIX}"
+          BIN_RELEASE_VERSIONED="${PROJECT_NAME}-${{ github.ref_name }}-${{ matrix.name }}${BIN_SUFFIX}
+
+          RELEASE_DIR=".dist"
+
+          mkdir -p "${RELEASE_DIR}"
+
+          mv "${BIN_OUTPUT}" ".dist/${BIN_RELEASE}"
+          echo $(cd "${RELEASE_DIR}" && sha256sum "${BIN_RELEASE}") > ${RELEASE_DIR}/${BIN_RELEASE}.sha256sum
+
+          EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
+          UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
+          cd "target/${RUST_TARGET}/release/"
+          curl \
+            --fail-with-body -sS \
+            -X POST \
+            --data-binary @"${RELEASE_DIR}/${BIN_RELEASE}" \
+            -H 'Content-Type: application/octet-stream' \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${UPLOAD_URL}?name=${BIN_RELEASE}"
+          curl \
+            --fail-with-body -sS \
+            -X POST \
+            --data-binary @"${RELEASE_DIR}/${BIN_RELEASE}.sha256sum" \
+            -H 'Content-Type: application/octet-stream' \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${UPLOAD_URL}?name=${BIN_RELEASE}.sha256sum"
