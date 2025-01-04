@@ -49,6 +49,7 @@ impl Options {
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct BackupOptions {
     #[serde(default)]
     forget: bool,
