@@ -79,11 +79,12 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
     }
 
     for repo_name in (*repo_names).as_ref() {
-        api.exec(
+        let output = api.exec(
             repo_name,
             config.repos().get(repo_name).unwrap(),
             args.args(),
         )?;
+        info!("\n{output}");
     }
 
     Ok(())
