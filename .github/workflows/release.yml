@@ -69,7 +69,6 @@ jobs:
 
           EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
           UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
-          cd "target/${RUST_TARGET}/release/"
           curl \
             --fail-with-body -sS \
             -X POST \
