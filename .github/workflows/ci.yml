@@ -53,9 +53,9 @@ jobs:
         with:
           targets: "${{ matrix.target }}"
           toolchain: "${{ matrix.toolchain }}"
-      - name: Setup Cache
+      - name: Setup cache
         uses: Swatinem/rust-cache@v2
-      - name: Run Tests
+      - name: Run
         run: cargo test --verbose --locked --release --target ${{ matrix.target }}
   fmt:
     name: Rustfmt
@@ -67,7 +67,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Setup Cache
+      - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Run
         run: cargo fmt --verbose --all -- --check
@@ -81,7 +81,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Setup Cache
+      - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Run
         run: cargo clippy --verbose -- -D warnings
