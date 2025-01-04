@@ -101,7 +101,7 @@ pub struct ForgetOptions {
     // TODO: durations
 }
 
-impl  ForgetOptions {
+impl ForgetOptions {
     pub fn prune(&self) -> bool {
         self.prune
     }
@@ -167,7 +167,9 @@ impl Location {
 impl Config {
     pub fn new(config_path: &Path) -> Result<Self, config::ConfigError> {
         let s = config::Config::builder()
-            .add_source(config::File::with_name(config_path.to_string_lossy().deref()))
+            .add_source(config::File::with_name(
+                config_path.to_string_lossy().deref(),
+            ))
             .build()?;
         s.try_deserialize()
     }

@@ -48,8 +48,14 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         for repo_name in location.repos() {
             if let Some(repo) = config.repos().get(repo_name) {
                 info!("Backup ...");
-                let output =
-                    api.backup(repo_name, repo, location.paths(), &tag, &backup_opts, args.dry_run())?;
+                let output = api.backup(
+                    repo_name,
+                    repo,
+                    location.paths(),
+                    &tag,
+                    &backup_opts,
+                    args.dry_run(),
+                )?;
                 info!("Backup done:\n\n{output}");
 
                 if !args.dry_run() && backup_opts.forget() {
@@ -73,7 +79,11 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
     }
 
     for repo_name in (*repo_names).as_ref() {
-        api.exec(repo_name, config.repos().get(repo_name).unwrap(), args.args())?;
+        api.exec(
+            repo_name,
+            config.repos().get(repo_name).unwrap(),
+            args.args(),
+        )?;
     }
 
     Ok(())
