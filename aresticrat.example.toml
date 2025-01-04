@@ -1,0 +1,129 @@
+# General notes:
+# - Paths are resolved relative to the working directory of the aresticrat
+#   invocation and NOT relative to the config file.
+# - Uncommented settings represent default values.
+# - Commented out settings represent optional configuration examples.
+# - Uppercase values in examples represent user defined names.
+
+# The restic executable. Must be a name in PATH or a file path.
+executable = "restic"
+
+
+# The global forget settings.
+# They apply to all locations that do not specify their own backup settings.
+[options.backup]
+
+# Whether to automatically run the forget command after every backup.
+forget = false
+
+# Supported exclude options.
+# These corresponds to restic options with the same names.
+exclude-caches = false
+exclude = [ ]
+iexclude = [ ]
+exclude-file = [ ]
+iexclude-file = [ ]
+
+
+# The global forget settings.
+# They apply to all locations that do not specify their own forget settings.
+[options.forget]
+
+# Whether to automatically run the prune command if snapshots have been removed.
+prune = false
+
+# Keep the last n snapshots
+#keep-last = n
+# Keep the last n hourly, daily, weekly, monthly or yearly snapshots
+#keep-hourly = n
+#keep-daily = n
+#keep-weekly = n
+#keep-monthly = n
+#keep-yearly = n
+
+
+
+### LOCATION SYNTAX ###
+
+# The header defines the location name.
+# The name is used to refer to this location from other parts of the
+# configuration or the CLI.
+#[locations.LOCATION]
+
+# Paths that should be stored in restic repositories (at least one required).
+# The key "from" is an alias and may be used instead of "paths".
+#paths = [ "/path/to/data" ]
+
+# Repositories that should be used to store the data.
+# The key "to" is an alias and may be used instead of "repos".
+#repos = [ "REPOSITORY" ]
+
+# Any "options.*" table from above may also be declared for a repository.
+# These location-specific sections replace the global sections, meaning that
+# none of the global options are applied, even if there are no corresponding
+# keys in the location-specific section.
+#[locations.LOCATION.options.(backup|forget|...)]
+#...
+
+
+# EXAMPLE: Minimal location configuration.
+# - Stores data from a single path.
+# - Stores data in a single repository.
+
+#[locations.userhomes]
+#paths = [ "/home" ]
+#repos = [ "remote" ]
+
+
+# EXAMPLE: Extensive location configuration.
+# - Stores data from multiple paths.
+# - Stores data in multiple repositories.
+# - Specifies its own forget policy.
+# - Specifies what data to exclude.
+
+#[locations.system]
+#from = [ "/etc", "/root", "/usr/local", "/var" ]
+#to = [ "local", "remote" ]
+
+#[locations.system.options.forget]
+#prune = true
+#keep-hourly = 48
+#keep-daily = 14
+#keep-weekly = 4
+#keep-monthly = 6
+#keep-yearly = 0
+
+#[locations.system.options.backup]
+#exclude-caches = true
+#exclude = [ "/var/cache" ]
+#iexclude = [ "*.tmp", "*.temp", "*.cache" ]
+#exclude-file = [ "/backup/excludes/common" ]
+#iexclude-file = [ "/backup/excludes/i-common" ]
+
+
+
+### REPOSITORY SYNTAX ###
+
+# The header defines the repository name.
+# The name is used to refer to this repository from other parts of the
+# configuration or the CLI.
+#[repos.REPOSITORY]
+
+# The path ot this repository. That's the value that would be passed to restics
+# -r/--repo option.
+#path = "a/restic/repository/path"
+
+# The repository key (password).
+#key = "unique_long_secret_value"
+
+
+# EXAMPLE: Local repository.
+#[repos.local]
+#path = "/backup/restic-repo"
+#key = "secret_local_repo_key"
+
+
+# EXAMPLE: Remote repository.
+#[repos.remote]
+#path = "sftp:user@host:/srv/restic-repo"
+#key = "secret_sftp_repo_key"

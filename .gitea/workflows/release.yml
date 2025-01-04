@@ -1,0 +1,102 @@
+name: Build Release Artifacts
+run-name: ${{ gitea.actor }} is building release artifacts.
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-unknown-linux-musl]
+        version: [1.70.0]
+    env:
+      RUSTUP_HOME: /usr/local/rustup
+      CARGO_HOME: /usr/local/cargo
+      RUSTUP_VERSION: 1.27.0
+      RUST_VERSION: ${{ matrix.version }}
+      RUST_ARCH: x86_64-unknown-linux-gnu
+      RUST_TARGET: ${{ matrix.target }}
+      VCS_TOKEN: ${{ secrets.VCS_TOKEN }}
+    steps:
+      - name: Add rust binary directory to PATH
+        run: echo "/usr/local/cargo/bin" >> $GITHUB_PATH
+      - name: Restore rust toolchain
+        uses: actions/cache/restore@v4
+        id: restore-toolchain-cache
+        with:
+          key: cache-rust-toolchain-${{ runner.os }}
+          path: |
+            ${{ env.CARGO_HOME }}/
+            ${{ env.RUSTUP_HOME }}/
+      - name: Install rust toolchain
+        run: |
+          if ! command -v rustup &> /dev/null; then
+            wget "https://static.rust-lang.org/rustup/archive/$RUSTUP_VERSION/$RUST_ARCH/rustup-init"
+            chmod +x rustup-init
+            ./rustup-init -y --no-modify-path --profile minimal --default-toolchain $RUST_VERSION --default-host $RUST_ARCH
+            rm rustup-init
+          fi
+          chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+          rustup default $RUST_VERSION
+          rustup target add $RUST_TARGET
+          rustup --version
+          rustc --version
+          cargo --version
+      - name: Update rust toolchain cache
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.restore-toolchain-cache.outputs.cache-primary-key }}
+          path: |
+            ${{ env.CARGO_HOME }}/
+            ${{ env.RUSTUP_HOME }}/
+      - name: Checkout source code
+        uses: actions/checkout@master
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v4
+        id: restore-build-cache
+        with:
+          key: cache-cargo-${{ runner.os }}-${{ gitea.repository }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cache-cargo-${{ runner.os }}-${{ gitea.repository }}-
+            cache-cargo-${{ runner.os }}-
+          path: |
+            ${{ env.CARGO_HOME }}/git
+            ${{ env.CARGO_HOME }}/registry
+            target/
+      - name: Build in release mode
+        run: cargo build --release --target=$RUST_TARGET
+      - name: Update build artifacts cache
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.restore-build-cache.outputs.cache-primary-key }}
+          path: |
+            ${{ env.CARGO_HOME }}/git
+            ${{ env.CARGO_HOME }}/registry
+            target/
+      - name: Compute artifact checksums
+        run: |
+          cd "target/${RUST_TARGET}/release/"
+          sha256sum aresticrat > aresticrat.sha256sum
+      - name: Upload artifacts
+        run: |
+          EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
+          UPLOAD_URL=$(echo "$EVENT_DATA" | jq -r .release.upload_url)
+          cd "target/${RUST_TARGET}/release/"
+          curl \
+            --fail-with-body -sS \
+            -X POST \
+            --data-binary @"aresticrat" \
+            -H 'Content-Type: application/octet-stream' \
+            -H "Authorization: Bearer ${VCS_TOKEN}" \
+            "${UPLOAD_URL}?name=aresticrat"
+          curl \
+            --fail-with-body -sS \
+            -X POST \
+            --data-binary @"aresticrat.sha256sum" \
+            -H 'Content-Type: application/octet-stream' \
+            -H "Authorization: Bearer ${VCS_TOKEN}" \
+            "${UPLOAD_URL}?name=aresticrat.sha256sum"
