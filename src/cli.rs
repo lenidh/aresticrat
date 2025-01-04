@@ -5,13 +5,16 @@ use clap::{Args as ClapArgs, Parser as ClapParser, Subcommand as ClapSubcommand}
 #[derive(ClapParser, Debug)]
 #[command(version, about)]
 pub struct Args {
-    /// Set configuration file
+    /// Set configuration file.
     #[arg(short, long = "config", default_value = "aresticrat.toml")]
     config_file: PathBuf,
-    /// Set working directory
+    /// Set working directory.
     #[arg(long = "wd")]
     working_dir: Option<PathBuf>,
-
+    /// Additionally read environment variables from the specified file (can be
+    /// specified multiple times).
+    #[arg(long = "env", value_name = "ENV_FILE")]
+    env_files: Vec<PathBuf>,
     #[command(subcommand)]
     command: Command,
 }
@@ -22,6 +25,9 @@ impl Args {
     }
     pub fn working_dir(&self) -> Option<&Path> {
         self.working_dir.as_deref()
+    }
+    pub fn env_files(&self) -> &[PathBuf] {
+        &self.env_files
     }
     pub fn command(&self) -> &Command {
         &self.command

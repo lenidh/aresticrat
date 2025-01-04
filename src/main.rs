@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
-use std::{env, error::Error};
+use std::{
+    env, error::Error, io::ErrorKind, path::{Path, PathBuf}
+};
 
 use config::{BackupOptions, Config, ForgetOptions};
 
@@ -20,6 +22,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let Some(wd) = args.working_dir() {
         env::set_current_dir(wd)?;
     }
+
+    load_env_files(args.env_files())?;
 
     setup_logger();
 
@@ -143,6 +147,27 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn load_env_files(additional_files: &[PathBuf]) -> Result<(), Box<dyn Error>> {
+    load_env_file(".env")?;
+    load_env_file(".aresticrat.env")?;
+    load_env_file("aresticrat.env")?;
+    for env_file in additional_files {
+        load_env_file(env_file)?;
+    }
+    Ok(())
+}
+
+fn load_env_file<P>(file: P) -> Result<(), Box<dyn Error>>
+where
+    P: AsRef<Path>,
+{
+    match dotenvy::from_path_override(file) {
+        Ok(_) => Ok(()),
+        Err(dotenvy::Error::Io(e)) if e.kind() == ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(Box::new(e)),
+    }
 }
 
 fn setup_logger() {
