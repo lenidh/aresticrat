@@ -3,7 +3,7 @@ use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
 use std::{
     env,
     error::Error,
-    io::ErrorKind,
+    io::{ErrorKind, IsTerminal},
     path::{Path, PathBuf},
 };
 
@@ -176,12 +176,14 @@ where
 fn setup_logger() {
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::fmt::layer().with_filter(
-                EnvFilter::builder()
-                    .with_default_directive(LevelFilter::INFO.into())
-                    .with_env_var("ARESTICRAT_LOG")
-                    .from_env_lossy(),
-            ),
+            tracing_subscriber::fmt::layer()
+                .with_ansi(std::io::stdout().is_terminal())
+                .with_filter(
+                    EnvFilter::builder()
+                        .with_default_directive(LevelFilter::INFO.into())
+                        .with_env_var("ARESTICRAT_LOG")
+                        .from_env_lossy(),
+                ),
         )
         .init();
 }
