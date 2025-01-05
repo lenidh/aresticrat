@@ -24,6 +24,14 @@ iexclude = [ ]
 exclude-file = [ ]
 iexclude-file = [ ]
 
+# Commands that are run before a location backup is done.
+# The location will be skipped, if any of these commands does not terminate with
+# an exit code of 0.
+# Every entry must be an array of strings with the fist one being the program
+# (mandatory) any following being arguments.
+# E. g.: [ [ "bash", "-c", "true" ], [ "path/to/script" ] ]
+hooks.if =  [ ]
+
 
 # The global forget settings.
 # They apply to all locations that do not specify their own forget settings.

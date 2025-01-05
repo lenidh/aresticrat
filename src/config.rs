@@ -65,6 +65,8 @@ pub struct BackupOptions {
     exclude_caches: bool,
     // TODO: larger-than
     // TODO: if-present
+    #[serde(default)]
+    hooks: BackupHooks,
 }
 
 impl BackupOptions {
@@ -85,6 +87,21 @@ impl BackupOptions {
     }
     pub fn exclude_caches(&self) -> bool {
         self.exclude_caches
+    }
+    pub fn hooks(&self) -> &BackupHooks {
+        &self.hooks
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct BackupHooks {
+    r#if: Vec<Vec<String>>
+}
+
+impl BackupHooks {
+    pub fn r#if(&self) -> &[Vec<String>] {
+        &self.r#if
     }
 }
 
