@@ -66,7 +66,7 @@ pub struct BackupOptions {
     // TODO: larger-than
     // TODO: if-present
     #[serde(default)]
-    hooks: BackupHooks,
+    hooks: HookOptions,
 }
 
 impl BackupOptions {
@@ -88,18 +88,18 @@ impl BackupOptions {
     pub fn exclude_caches(&self) -> bool {
         self.exclude_caches
     }
-    pub fn hooks(&self) -> &BackupHooks {
+    pub fn hooks(&self) -> &HookOptions {
         &self.hooks
     }
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct BackupHooks {
-    r#if: Vec<Vec<String>>
+pub struct HookOptions {
+    r#if: Vec<Vec<String>>,
 }
 
-impl BackupHooks {
+impl HookOptions {
     pub fn r#if(&self) -> &[Vec<String>] {
         &self.r#if
     }
@@ -117,6 +117,8 @@ pub struct ForgetOptions {
     keep_monthly: Option<u32>,
     keep_yearly: Option<u32>,
     // TODO: durations
+    #[serde(default)]
+    hooks: HookOptions,
 }
 
 impl ForgetOptions {
@@ -140,6 +142,9 @@ impl ForgetOptions {
     }
     pub fn keep_yearly(&self) -> Option<u32> {
         self.keep_yearly
+    }
+    pub fn hooks(&self) -> &HookOptions {
+        &self.hooks
     }
 }
 

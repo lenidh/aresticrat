@@ -49,6 +49,15 @@ prune = false
 #keep-monthly = n
 #keep-yearly = n
 
+# Commands that are run before a location forget is done.
+# The location will be skipped, if any of these commands does not terminate with
+# an exit code of 0.
+# This hook is not executed if the forget is done as part of a backup.
+# Every entry must be an array of strings with the fist one being the program
+# (mandatory) any following being arguments.
+# E. g.: [ [ "bash", "-c", "true" ], [ "path/to/script" ] ]
+hooks.if =  [ ]
+
 
 
 ### LOCATION SYNTAX ###

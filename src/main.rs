@@ -52,15 +52,17 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         let backup_opts = get_backup_options(location_name, config);
         let forget_opts = get_forget_options(location_name, config);
 
-        let if_status = run_hooks("IF",backup_opts.hooks().r#if())?;
+        info!("Backup location {location_name} ...");
+
+        let if_status = run_hooks("IF", backup_opts.hooks().r#if())?;
         if !if_status.success() {
             info!("IF hook failed. Skip location.");
-            return Ok(());
+            continue;
         }
 
         for repo_name in location.repos() {
             if let Some(repo) = config.repos().get(repo_name) {
-                info!("Backup ...");
+                info!("Backup to repository {repo_name} ...");
                 let output = api.backup(
                     repo_name,
                     repo,
@@ -69,22 +71,37 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
                     &backup_opts,
                     args.dry_run(),
                 )?;
-                info!("Backup done:\n\n{output}");
-
-                if !args.dry_run() && backup_opts.forget() {
-                    info!("Forget ...");
-                    let output = api.forget(repo_name, repo, &tag, &forget_opts, false)?;
-                    info!("Forget done:\n\n{output}");
-                }
+                info!("Backup to repository {repo_name} done:\n\n{output}");
             } else {
                 warn!("Location {location_name} refers to an undefined repository {repo_name}.")
+            }
+        }
+
+        if !args.dry_run() && backup_opts.forget() {
+            info!("Forget for location {location_name} ...");
+
+            let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
+            if !if_status.success() {
+                info!("IF hook failed. Skip location.");
+                continue;
+            }
+
+            for repo_name in location.repos() {
+                if let Some(repo) = config.repos().get(repo_name) {
+                    info!("Forget from repository {repo_name} ...");
+                    let output = api.forget(repo_name, repo, &tag, &forget_opts, false)?;
+                    info!("Forget from repository {repo_name} done:\n\n{output}");
+                }
             }
         }
     }
     Ok(())
 }
 
-fn run_hooks(name: &str, hooks: &[Vec<String>]) -> Result<std::process::ExitStatus, std::io::Error> {
+fn run_hooks(
+    name: &str,
+    hooks: &[Vec<String>],
+) -> Result<std::process::ExitStatus, std::io::Error> {
     if hooks.is_empty() {
         return Ok(Default::default());
     }
@@ -163,6 +180,12 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
     for (location_name, location) in locations {
         let tag = get_tag(location_name);
         let forget_opts = get_forget_options(location_name, config);
+
+        let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
+        if !if_status.success() {
+            info!("IF hook failed. Skip location.");
+            continue;
+        }
 
         for r in location.repos() {
             if let Some(repo) = config.repos().get(r) {
