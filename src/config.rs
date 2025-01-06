@@ -4,6 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use serde::Deserialize;
+use thiserror::Error;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -19,6 +20,15 @@ fn default_executable() -> String {
 }
 
 impl Config {
+    pub fn new(config_path: &Path) -> Result<Self, config::ConfigError> {
+        let s = config::Config::builder()
+            .add_source(config::File::with_name(
+                config_path.to_string_lossy().deref(),
+            ))
+            .build()?;
+        s.try_deserialize()
+    }
+
     pub fn executable(&self) -> &str {
         &self.executable
     }
@@ -96,11 +106,11 @@ impl BackupOptions {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct HookOptions {
-    r#if: Vec<Vec<String>>,
+    r#if: Vec<CommandSeq>,
 }
 
 impl HookOptions {
-    pub fn r#if(&self) -> &[Vec<String>] {
+    pub fn r#if(&self) -> &[CommandSeq] {
         &self.r#if
     }
 }
@@ -187,13 +197,86 @@ impl Location {
     }
 }
 
-impl Config {
-    pub fn new(config_path: &Path) -> Result<Self, config::ConfigError> {
-        let s = config::Config::builder()
-            .add_source(config::File::with_name(
-                config_path.to_string_lossy().deref(),
-            ))
-            .build()?;
-        s.try_deserialize()
+#[derive(Clone, Debug)]
+pub struct CommandSeq(Vec<String>);
+
+impl CommandSeq {
+    pub fn from_vec(v: Vec<String>) -> Result<Self, CommandSeqParseError> {
+        if v.is_empty() {
+            return Err(CommandSeqParseError(
+                "At least one element required.".to_string(),
+            ));
+        }
+        Ok(Self(v))
+    }
+
+    pub fn parse_shell_words(str: &str) -> Result<Self, CommandSeqParseError> {
+        let v = shell_words::split(str).map_err(|e| CommandSeqParseError(e.to_string()))?;
+        Ok(Self(v))
+    }
+
+    pub fn program(&self) -> &String {
+        self.0.first().unwrap()
+    }
+
+    pub fn args(&self) -> &[String] {
+        &self.0[1..]
     }
 }
+
+impl<'de> Deserialize<'de> for CommandSeq {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::*;
+
+        struct CommandSeqVisitor;
+
+        impl<'de> de::Visitor<'de> for CommandSeqVisitor {
+            type Value = CommandSeq;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a program name followed by any number of arguments either as a string or a sequence of string")
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                CommandSeq::parse_shell_words(v).map_err(de::Error::custom)
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::SeqAccess<'de>,
+            {
+                let capacity = seq.size_hint().unwrap_or(0);
+                let mut values = Vec::<String>::with_capacity(capacity);
+
+                while let Some(value) = seq.next_element()? {
+                    values.push(value);
+                }
+
+                if values.is_empty() {
+                    return Err(de::Error::invalid_length(0, &"at least one element"));
+                }
+
+                CommandSeq::from_vec(values).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_seq(CommandSeqVisitor)
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("{0}")]
+pub struct CommandSeqParseError(String);

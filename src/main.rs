@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use config::{BackupOptions, Config, ForgetOptions};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions};
 
 use clap::Parser as ClapParser;
 use tracing::{debug, error, info, level_filters::LevelFilter, warn};
@@ -98,18 +98,15 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
     Ok(())
 }
 
-fn run_hooks(
-    name: &str,
-    hooks: &[Vec<String>],
-) -> Result<std::process::ExitStatus, std::io::Error> {
+fn run_hooks(name: &str, hooks: &[CommandSeq]) -> Result<std::process::ExitStatus, std::io::Error> {
     if hooks.is_empty() {
         return Ok(Default::default());
     }
 
     info!("Running {name} hooks ...");
     for hook in hooks {
-        let program = hook.first().unwrap();
-        let args = &hook[1..];
+        let program = hook.program();
+        let args = hook.args();
 
         let mut cmd = std::process::Command::new(program);
         cmd.args(args);

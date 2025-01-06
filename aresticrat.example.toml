@@ -4,6 +4,15 @@
 # - Uncommented settings represent default values.
 # - Commented out settings represent optional configuration examples.
 # - Uppercase values in examples represent user defined names.
+#
+# Special types:
+# - COMMAND: A command consists of a program name followed by any number
+#   (including none) of arguments. Values of this type have two possible forms:
+#   - a sequence of strings (exec form), e. g. [ "program", "arg1", "arg2" ].
+#     These strings are passed to the child process without additional
+#     processing.
+#   - a string (shell form), e. g. "program arg1 arg2". The string is processed
+#     according to parsing rules of a Unix shell.
 
 # The restic executable. Must be a name in PATH or a file path.
 executable = "restic"
@@ -27,9 +36,7 @@ iexclude-file = [ ]
 # Commands that are run before a location backup is done.
 # The location will be skipped, if any of these commands does not terminate with
 # an exit code of 0.
-# Every entry must be an array of strings with the fist one being the program
-# (mandatory) any following being arguments.
-# E. g.: [ [ "bash", "-c", "true" ], [ "path/to/script" ] ]
+# Must be a sequence of COMMAND values.
 hooks.if =  [ ]
 
 
@@ -53,9 +60,7 @@ prune = false
 # The location will be skipped, if any of these commands does not terminate with
 # an exit code of 0.
 # This hook is not executed if the forget is done as part of a backup.
-# Every entry must be an array of strings with the fist one being the program
-# (mandatory) any following being arguments.
-# E. g.: [ [ "bash", "-c", "true" ], [ "path/to/script" ] ]
+# Must be a sequence of COMMAND values.
 hooks.if =  [ ]
 
 
