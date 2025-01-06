@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use config::{BackupOptions, Config, ForgetOptions};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions};
 
 use clap::Parser as ClapParser;
 use tracing::{debug, error, info, level_filters::LevelFilter, warn};
@@ -52,9 +52,17 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         let backup_opts = get_backup_options(location_name, config);
         let forget_opts = get_forget_options(location_name, config);
 
+        info!("Backup location {location_name} ...");
+
+        let if_status = run_hooks("IF", backup_opts.hooks().r#if())?;
+        if !if_status.success() {
+            info!("IF hook failed. Skip location.");
+            continue;
+        }
+
         for repo_name in location.repos() {
             if let Some(repo) = config.repos().get(repo_name) {
-                info!("Backup ...");
+                info!("Backup to repository {repo_name} ...");
                 let output = api.backup(
                     repo_name,
                     repo,
@@ -63,19 +71,73 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
                     &backup_opts,
                     args.dry_run(),
                 )?;
-                info!("Backup done:\n\n{output}");
-
-                if !args.dry_run() && backup_opts.forget() {
-                    info!("Forget ...");
-                    let output = api.forget(repo_name, repo, &tag, &forget_opts, false)?;
-                    info!("Forget done:\n\n{output}");
-                }
+                info!("Backup to repository {repo_name} done:\n\n{output}");
             } else {
                 warn!("Location {location_name} refers to an undefined repository {repo_name}.")
             }
         }
+
+        if !args.dry_run() && backup_opts.forget() {
+            info!("Forget for location {location_name} ...");
+
+            let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
+            if !if_status.success() {
+                info!("IF hook failed. Skip location.");
+                continue;
+            }
+
+            for repo_name in location.repos() {
+                if let Some(repo) = config.repos().get(repo_name) {
+                    info!("Forget from repository {repo_name} ...");
+                    let output = api.forget(repo_name, repo, &tag, &forget_opts, false)?;
+                    info!("Forget from repository {repo_name} done:\n\n{output}");
+                }
+            }
+        }
     }
     Ok(())
+}
+
+fn run_hooks(name: &str, hooks: &[CommandSeq]) -> Result<std::process::ExitStatus, std::io::Error> {
+    if hooks.is_empty() {
+        return Ok(Default::default());
+    }
+
+    info!("Running {name} hooks ...");
+    for hook in hooks {
+        let program = hook.program();
+        let args = hook.args();
+
+        let mut cmd = std::process::Command::new(program);
+        cmd.args(args);
+
+        let result = cmd.output()?;
+
+        log_cmd_output(&cmd, &result);
+
+        let status = result.status;
+        if !status.success() {
+            return Ok(status);
+        }
+    }
+    Ok(Default::default())
+}
+
+fn log_cmd_output(cmd: &std::process::Command, output: &std::process::Output) {
+    let status = output.status;
+    let out = String::from_utf8_lossy(&output.stdout);
+    let err = String::from_utf8_lossy(&output.stderr);
+
+    let mut str = String::new();
+    str.push_str(&format!("Finished command {cmd:?}\nStatus: {status}"));
+    if !err.is_empty() {
+        str.push_str(&format!("\nStderr:\n{err}"));
+    }
+    if !out.is_empty() {
+        str.push_str(&format!("\nStdout:\n{out}"));
+    }
+
+    info!("{str}");
 }
 
 fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
@@ -115,6 +177,12 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
     for (location_name, location) in locations {
         let tag = get_tag(location_name);
         let forget_opts = get_forget_options(location_name, config);
+
+        let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
+        if !if_status.success() {
+            info!("IF hook failed. Skip location.");
+            continue;
+        }
 
         for r in location.repos() {
             if let Some(repo) = config.repos().get(r) {
