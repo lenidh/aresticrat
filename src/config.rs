@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use thiserror::Error;
 
+use crate::ENV_PREFIX;
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     #[serde(default = "default_executable")]
@@ -26,6 +28,7 @@ impl Config {
             .add_source(config::File::with_name(
                 config_path.to_string_lossy().deref(),
             ))
+            .add_source(config::Environment::with_prefix(ENV_PREFIX).separator("_"))
             .build()?;
         s.try_deserialize()
     }
