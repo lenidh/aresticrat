@@ -10,6 +10,7 @@ use thiserror::Error;
 pub struct Config {
     #[serde(default = "default_executable")]
     executable: String,
+    #[serde(default)]
     options: Options,
     repos: HashMap<String, Repo>,
     locations: HashMap<String, Location>,
