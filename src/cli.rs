@@ -11,8 +11,21 @@ pub struct Args {
     /// Set working directory.
     #[arg(long = "wd")]
     working_dir: Option<PathBuf>,
-    /// Additionally read environment variables from the specified file (can be
-    /// specified multiple times).
+    /// Do not output to stdout/stderr (doesn't affect logging).
+    #[arg(short, long)]
+    quiet: bool,
+    /// Print more information (doesn't affect logging) (repeatable).
+    ///
+    /// Specify multiple times to increase verbosity step by step:
+    /// off (default with -q) -> error -> warn -> info (default without -q) ->
+    /// debug -> trace.
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
+    /// Additionally read environment variables from the specified file
+    /// (repeatable).
+    ///
+    /// Files are processed in the specified order, so values in later files
+    /// overwrite those in earlier files.
     #[arg(long = "env", value_name = "ENV_FILE")]
     env_files: Vec<PathBuf>,
     #[command(subcommand)]
@@ -22,6 +35,12 @@ pub struct Args {
 impl Args {
     pub fn config_file(&self) -> &Path {
         &self.config_file
+    }
+    pub fn quiet(&self) -> bool {
+        self.quiet
+    }
+    pub fn verbose(&self) -> u8 {
+        self.verbose
     }
     pub fn working_dir(&self) -> Option<&Path> {
         self.working_dir.as_deref()
@@ -62,7 +81,7 @@ impl BackupArgs {
 
 #[derive(ClapArgs, Debug)]
 pub struct ExecArgs {
-    /// Only run the command for this repository (can be specified multiple times).
+    /// Only run the command for this repository (repeatable).
     #[arg(short, long = "repo", value_name = "REPO")]
     repos: Vec<String>,
     /// One or more arguments passed to the restic executable.
@@ -81,7 +100,7 @@ impl ExecArgs {
 
 #[derive(ClapArgs, Debug)]
 pub struct ForgetArgs {
-    /// Only remove snapshots of this location (can be specified multiple times).
+    /// Only remove snapshots of this location (repeatable).
     #[arg(short, long)]
     locations: Vec<String>,
     /// Do not delete any data, just show what would be done.

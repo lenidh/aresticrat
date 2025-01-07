@@ -5,22 +5,42 @@ use std::{
     error::Error,
     io::{ErrorKind, IsTerminal},
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
-use config::{BackupOptions, CommandSeq, Config, ForgetOptions};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location};
 
 use clap::Parser as ClapParser;
-use tracing::{debug, error, info, level_filters::LevelFilter, warn};
+use tracing::{level_filters::LevelFilter, Level};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 mod cli;
 mod config;
 mod restic_api;
+mod run;
 
 const ENV_PREFIX: &str = "ARESTICRAT_";
 
+const DEFAULT_VERBOSITY: usize = 3;
+static VERBOSITY: OnceLock<usize> = OnceLock::new();
+
+fn verbosity() -> usize {
+    *VERBOSITY.get().expect("Verbosity state not initialized.")
+}
+
+fn init_verbosity(quiet: bool, inc: usize) {
+    let mut verbosity: usize = DEFAULT_VERBOSITY;
+    if quiet {
+        verbosity = 0;
+    }
+    verbosity += inc;
+    VERBOSITY.get_or_init(|| verbosity);
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+
+    init_verbosity(args.quiet(), args.verbose() as usize);
 
     if let Some(wd) = args.working_dir() {
         env::set_current_dir(wd)?;
@@ -50,20 +70,19 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
 
         let tag = get_tag(location_name);
         let backup_opts = get_backup_options(location_name, config);
-        let forget_opts = get_forget_options(location_name, config);
 
-        info!("Backup location {location_name} ...");
+        print_log!(Level::INFO, "Backup location {location_name} ...");
 
         let if_status = run_hooks("IF", backup_opts.hooks().r#if())?;
         if !if_status.success() {
-            info!("IF hook failed. Skip location.");
+            print_log!(Level::INFO, "IF hook failed. Skip location.");
             continue;
         }
 
         for repo_name in location.repos() {
             if let Some(repo) = config.repos().get(repo_name) {
-                info!("Backup to repository {repo_name} ...");
-                let output = api.backup(
+                print_log!(Level::INFO, "Backup to repository {repo_name} ...");
+                api.backup(
                     repo_name,
                     repo,
                     location.paths(),
@@ -71,28 +90,17 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
                     &backup_opts,
                     args.dry_run(),
                 )?;
-                info!("Backup to repository {repo_name} done:\n\n{output}");
+                print_log!(Level::INFO, "Backup to repository {repo_name} done.");
             } else {
-                warn!("Location {location_name} refers to an undefined repository {repo_name}.")
+                print_log!(
+                    Level::WARN,
+                    "Location {location_name} refers to an undefined repository {repo_name}."
+                )
             }
         }
 
         if !args.dry_run() && backup_opts.forget() {
-            info!("Forget for location {location_name} ...");
-
-            let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
-            if !if_status.success() {
-                info!("IF hook failed. Skip location.");
-                continue;
-            }
-
-            for repo_name in location.repos() {
-                if let Some(repo) = config.repos().get(repo_name) {
-                    info!("Forget from repository {repo_name} ...");
-                    let output = api.forget(repo_name, repo, &tag, &forget_opts, false)?;
-                    info!("Forget from repository {repo_name} done:\n\n{output}");
-                }
-            }
+            forget_location(&api, location_name, location, config, args.dry_run())?;
         }
     }
     Ok(())
@@ -103,41 +111,8 @@ fn run_hooks(name: &str, hooks: &[CommandSeq]) -> Result<std::process::ExitStatu
         return Ok(Default::default());
     }
 
-    info!("Running {name} hooks ...");
-    for hook in hooks {
-        let program = hook.program();
-        let args = hook.args();
-
-        let mut cmd = std::process::Command::new(program);
-        cmd.args(args);
-
-        let result = cmd.output()?;
-
-        log_cmd_output(&cmd, &result);
-
-        let status = result.status;
-        if !status.success() {
-            return Ok(status);
-        }
-    }
-    Ok(Default::default())
-}
-
-fn log_cmd_output(cmd: &std::process::Command, output: &std::process::Output) {
-    let status = output.status;
-    let out = String::from_utf8_lossy(&output.stdout);
-    let err = String::from_utf8_lossy(&output.stderr);
-
-    let mut str = String::new();
-    str.push_str(&format!("Finished command {cmd:?}\nStatus: {status}"));
-    if !err.is_empty() {
-        str.push_str(&format!("\nStderr:\n{err}"));
-    }
-    if !out.is_empty() {
-        str.push_str(&format!("\nStdout:\n{out}"));
-    }
-
-    info!("{str}");
+    print_log!(Level::INFO, "Running {name} hooks ...");
+    run::run_sequential(hooks.iter().map(|c| c.to_command()), false)
 }
 
 fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
@@ -148,12 +123,11 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
     }
 
     for repo_name in (*repo_names).as_ref() {
-        let output = api.exec(
+        api.exec(
             repo_name,
             config.repos().get(repo_name).unwrap(),
             args.args(),
         )?;
-        info!("\n{output}");
     }
 
     Ok(())
@@ -175,20 +149,35 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     for (location_name, location) in locations {
-        let tag = get_tag(location_name);
-        let forget_opts = get_forget_options(location_name, config);
+        forget_location(&api, location_name, location, config, args.dry_run())?;
+    }
 
-        let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
-        if !if_status.success() {
-            info!("IF hook failed. Skip location.");
-            continue;
-        }
+    Ok(())
+}
 
-        for r in location.repos() {
-            if let Some(repo) = config.repos().get(r) {
-                let output = api.forget(r, repo, &tag, &forget_opts, args.dry_run())?;
-                info!("{output}")
-            }
+fn forget_location(
+    api: &restic_api::Api,
+    location_name: &str,
+    location: &Location,
+    config: &Config,
+    dry_run: bool,
+) -> Result<()> {
+    print_log!(Level::INFO, "Forget for location {location_name} ...");
+
+    let tag = get_tag(location_name);
+    let forget_opts = get_forget_options(location_name, config);
+
+    let if_status = run_hooks("IF", forget_opts.hooks().r#if())?;
+    if !if_status.success() {
+        print_log!(Level::INFO, "IF hook failed. Skip location.");
+        return Ok(());
+    }
+
+    for repo_name in location.repos() {
+        if let Some(repo) = config.repos().get(repo_name) {
+            print_log!(Level::INFO, "Forget from repository {repo_name} ...");
+            api.forget(repo_name, repo, &tag, &forget_opts, dry_run)?;
+            print_log!(Level::INFO, "Forget from repository {repo_name} done.");
         }
     }
 
@@ -204,16 +193,19 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
         use restic_api::RepoStatus::*;
         match status {
             Ok => {
-                info!("Repository {repo_name}: OK")
+                print_log!(Level::INFO, "Repository {repo_name}: OK")
             }
             NoRepository if args.init() => {
-                debug!("Repository {repo_name} not found. Initialize ...");
-                let output = api.init(repo_name, repo.path(), repo.key())?;
-                info!("Repository {repo_name}: INITIALIZED\n\n{output}")
+                print_log!(
+                    Level::DEBUG,
+                    "Repository {repo_name} not found. Initialize ..."
+                );
+                api.init(repo_name, repo.path(), repo.key())?;
+                print_log!(Level::INFO, "Repository {repo_name}: INITIALIZED")
             }
-            NoRepository => error!("Repository {repo_name}: NOT FOUND"),
-            Locked => error!("Repository {repo_name}: LOCKED"),
-            InvalidKey => error!("Repository {repo_name}: INVALID KEY."),
+            NoRepository => print_log!(Level::ERROR, "Repository {repo_name}: NOT FOUND"),
+            Locked => print_log!(Level::ERROR, "Repository {repo_name}: LOCKED"),
+            InvalidKey => print_log!(Level::ERROR, "Repository {repo_name}: INVALID KEY."),
         }
     }
 
@@ -248,7 +240,7 @@ fn setup_logger() {
                 .with_ansi(std::io::stdout().is_terminal())
                 .with_filter(
                     EnvFilter::builder()
-                        .with_default_directive(LevelFilter::INFO.into())
+                        .with_default_directive(LevelFilter::OFF.into())
                         .with_env_var("ARESTICRAT_LOG")
                         .from_env_lossy(),
                 ),
@@ -279,3 +271,21 @@ fn get_forget_options(location_name: &str, config: &Config) -> ForgetOptions {
         .cloned()
         .unwrap_or_default()
 }
+
+macro_rules! print_log {
+    ($lvl:expr, $($arg:tt)*) => {
+        {
+            match ($lvl, crate::verbosity()) {
+                (tracing::Level::TRACE, v) if v > 4 => println!($($arg)*),
+                (tracing::Level::DEBUG, v) if v > 3 => println!($($arg)*),
+                (tracing::Level::INFO, v) if v > 2 => println!($($arg)*),
+                (tracing::Level::WARN, v) if v > 1 => println!($($arg)*),
+                (tracing::Level::ERROR, v) if v > 0 => println!($($arg)*),
+                _ => {},
+            };
+            tracing::event!($lvl, $($arg)*)
+        }
+    };
+}
+
+pub(crate) use print_log;

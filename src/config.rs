@@ -223,6 +223,12 @@ impl CommandSeq {
     pub fn args(&self) -> &[String] {
         &self.0[1..]
     }
+
+    pub fn to_command(&self) -> std::process::Command {
+        let mut cmd = std::process::Command::new(self.program());
+        cmd.args(self.args());
+        cmd
+    }
 }
 
 impl<'de> Deserialize<'de> for CommandSeq {
