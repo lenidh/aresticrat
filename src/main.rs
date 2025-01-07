@@ -25,7 +25,7 @@ const DEFAULT_VERBOSITY: usize = 3;
 static VERBOSITY: OnceLock<usize> = OnceLock::new();
 
 fn verbosity() -> usize {
-    return *VERBOSITY.get().expect("Verbosity state not initialized.");
+    *VERBOSITY.get().expect("Verbosity state not initialized.")
 }
 
 fn init_verbosity(quiet: bool, inc: usize) {
