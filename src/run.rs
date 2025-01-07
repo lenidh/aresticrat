@@ -101,9 +101,9 @@ impl<R: Read, W: Write> Read for Tee<R, W> {
                 Ok(0) => return Ok(0),
                 Ok(n) => {
                     self.1.write_all(&buf[..n])?;
-                    return Ok(n)
+                    return Ok(n);
                 }
-                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {},
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             };
         }
