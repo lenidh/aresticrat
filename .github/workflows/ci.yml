@@ -8,7 +8,7 @@ on:
     types: [opened, synchronize]
 
 env:
-  MIN_TOOLCHAIN: 1.75.0
+  MIN_TOOLCHAIN: ${{ vars.MIN_TOOLCHAIN }}
 
 jobs:
   test:
@@ -20,7 +20,7 @@ jobs:
           - name: Toolchain - 1.75.0
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            toolchain: ${{ env.MIN_TOOLCHAIN }}
+            toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
           - name: Toolchain - stable
             runs-on: ubuntu-latest
@@ -35,17 +35,17 @@ jobs:
           - name: Target - Linux-x86_64
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            toolchain: ${{ env.MIN_TOOLCHAIN }}
+            toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
           - name: Target - Windows-x86_64
             runs-on: windows-latest
             target: x86_64-pc-windows-msvc
-            toolchain: ${{ env.MIN_TOOLCHAIN }}
+            toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
           - name: Target - macOS-x86_64
             runs-on: macos-latest
             target: x86_64-apple-darwin
-            toolchain: ${{ env.MIN_TOOLCHAIN }}
+            toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
     runs-on: ${{ matrix.runs-on }}
     steps:
@@ -69,7 +69,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.MIN_TOOLCHAIN }}
+          toolchain: ${{ vars.MIN_TOOLCHAIN }}
           components: rustfmt
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
@@ -84,7 +84,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.MIN_TOOLCHAIN }}
+          toolchain: ${{ vars.MIN_TOOLCHAIN }}
           components: clippy
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
