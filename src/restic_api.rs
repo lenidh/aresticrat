@@ -5,11 +5,11 @@ use std::process::Command;
 use std::process::ExitStatus;
 
 use thiserror::Error;
-use tracing::debug;
 
 use crate::config::BackupOptions;
 use crate::config::ForgetOptions;
 use crate::config::Repo;
+use crate::run;
 use crate::ENV_PREFIX;
 
 pub struct Api {
@@ -29,7 +29,7 @@ impl Api {
         tag: S,
         backup_options: &BackupOptions,
         dry_run: bool,
-    ) -> Result<String>
+    ) -> Result<()>
     where
         I: IntoIterator<Item = P>,
         P: AsRef<Path>,
@@ -64,7 +64,7 @@ impl Api {
         for path in paths.into_iter().collect::<Vec<_>>() {
             cmd.arg(OsStr::new(path.as_ref()));
         }
-        exec(&mut cmd)
+        run(&mut cmd)
     }
 
     pub fn forget<S>(
@@ -74,7 +74,7 @@ impl Api {
         tag: S,
         options: &ForgetOptions,
         dry_run: bool,
-    ) -> Result<String>
+    ) -> Result<()>
     where
         S: AsRef<str>,
     {
@@ -112,7 +112,7 @@ impl Api {
         }
         forget_cmd.arg("--tag");
         forget_cmd.arg(tag.as_ref());
-        exec(&mut forget_cmd)
+        run(&mut forget_cmd)
     }
 
     pub fn status(&self, repo_name: &str, repo_path: &str, key: &str) -> Result<RepoStatus> {
@@ -120,35 +120,26 @@ impl Api {
         cmd.arg("cat");
         cmd.arg("config");
 
-        match exec(&mut cmd) {
-            Ok(_) => Ok(RepoStatus::Ok),
-            Err(Error::CmdFailure {
-                program,
+        let status = run::run(&mut cmd, true)?;
+        match status.code() {
+            Some(0) => Ok(RepoStatus::Ok),
+            Some(10) => Ok(RepoStatus::NoRepository),
+            Some(11) => Ok(RepoStatus::Locked),
+            Some(12) => Ok(RepoStatus::InvalidKey),
+            _ => Err(Error::CmdFailure {
+                program: cmd.get_program().to_owned(),
                 status,
-                stdout,
-                stderr,
-            }) => match status.code() {
-                Some(10) => Ok(RepoStatus::NoRepository),
-                Some(11) => Ok(RepoStatus::Locked),
-                Some(12) => Ok(RepoStatus::InvalidKey),
-                _ => Err(Error::CmdFailure {
-                    program,
-                    status,
-                    stdout,
-                    stderr,
-                }),
-            },
-            Err(e) => Err(e),
+            }),
         }
     }
 
-    pub fn init(&self, repo_name: &str, repo_path: &str, key: &str) -> Result<String> {
+    pub fn init(&self, repo_name: &str, repo_path: &str, key: &str) -> Result<()> {
         let mut cmd = self.command(repo_name, repo_path, key);
         cmd.arg("init");
-        exec(&mut cmd)
+        run(&mut cmd)
     }
 
-    pub fn exec<I, S>(&self, repo_name: &str, repo: &Repo, args: I) -> Result<String>
+    pub fn exec<I, S>(&self, repo_name: &str, repo: &Repo, args: I) -> Result<()>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -157,7 +148,7 @@ impl Api {
         args.into_iter().for_each(|arg| {
             cmd.arg(arg.as_ref());
         });
-        exec(&mut cmd)
+        run(&mut cmd)
     }
 
     fn command(&self, repo_name: &str, path: &str, key: &str) -> Command {
@@ -183,19 +174,14 @@ impl Api {
     }
 }
 
-fn exec(cmd: &mut Command) -> Result<String> {
-    debug!("Execute command: {cmd:?}");
-    let result = cmd.output()?;
-    if result.status.success() {
-        let out = String::from_utf8(result.stdout)
-            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
-        Ok(out)
+fn run(cmd: &mut Command) -> Result<()> {
+    let status = run::run(cmd, false)?;
+    if status.success() {
+        Ok(())
     } else {
         Err(Error::CmdFailure {
             program: cmd.get_program().to_os_string(),
-            status: result.status,
-            stdout: String::from_utf8_lossy(&result.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&result.stderr).to_string(),
+            status,
         })
     }
 }
@@ -219,12 +205,10 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Execution of {program:?} failed ({status}).\n\n{stderr}")]
+    #[error("Execution of {program:?} failed ({status}).")]
     CmdFailure {
         program: OsString,
         status: ExitStatus,
-        stdout: String,
-        stderr: String,
     },
     #[error("{0}")]
     IoError(#[from] std::io::Error),
