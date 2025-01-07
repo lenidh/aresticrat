@@ -96,9 +96,17 @@ impl<R: Read, W: Write> Tee<R, W> {
 
 impl<R: Read, W: Write> Read for Tee<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let n = self.0.read(buf)?;
-        self.1.write_all(&buf[..n])?;
-        Ok(n)
+        loop {
+            match self.0.read(buf) {
+                Ok(0) => return Ok(0),
+                Ok(n) => {
+                    self.1.write_all(&buf[..n])?;
+                    return Ok(n);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            };
+        }
     }
 }
 
