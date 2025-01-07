@@ -50,6 +50,15 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     setup_logger();
 
+    if let Err(err) = handle_command(args) {
+        print_log!(Level::ERROR, "{err}");
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
+fn handle_command(args: Args) -> Result<(), Box<dyn Error>> {
     let config = config::Config::new(args.config_file())?;
 
     match args.command() {
@@ -279,8 +288,8 @@ macro_rules! print_log {
                 (tracing::Level::TRACE, v) if v > 4 => println!($($arg)*),
                 (tracing::Level::DEBUG, v) if v > 3 => println!($($arg)*),
                 (tracing::Level::INFO, v) if v > 2 => println!($($arg)*),
-                (tracing::Level::WARN, v) if v > 1 => println!($($arg)*),
-                (tracing::Level::ERROR, v) if v > 0 => println!($($arg)*),
+                (tracing::Level::WARN, v) if v > 1 => eprintln!($($arg)*),
+                (tracing::Level::ERROR, v) if v > 0 => eprintln!($($arg)*),
                 _ => {},
             };
             tracing::event!($lvl, $($arg)*)
