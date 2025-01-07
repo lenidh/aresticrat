@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
 use std::{
-    collections::HashMap,
     env,
     error::Error,
     io::{ErrorKind, IsTerminal},
@@ -9,7 +8,7 @@ use std::{
     sync::OnceLock,
 };
 
-use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location, Repo};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location};
 
 use clap::Parser as ClapParser;
 use tracing::{level_filters::LevelFilter, Level};
