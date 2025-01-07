@@ -152,14 +152,15 @@ impl Api {
     }
 
     fn command(&self, repo_name: &str, path: &str, key: &str) -> Command {
-        let repo_env_prefix = format!("{}{}_", ENV_PREFIX, repo_name.to_uppercase());
+        let env_prefix = format!("{ENV_PREFIX}_R_");
+        let repo_env_prefix = format!("{}{}_", env_prefix, repo_name.to_uppercase());
 
         let vars = std::env::vars()
             .map(|(mut k, v)| {
                 remove_prefix(&mut k, &repo_env_prefix);
                 (k, v)
             })
-            .filter(|(k, _)| !k.starts_with(ENV_PREFIX));
+            .filter(|(k, _)| !k.starts_with(&env_prefix));
 
         let mut cmd = std::process::Command::new(&self.exe);
         cmd.env_clear();
