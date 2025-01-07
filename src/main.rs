@@ -19,7 +19,7 @@ mod config;
 mod restic_api;
 mod run;
 
-const ENV_PREFIX: &str = "ARESTICRAT_";
+const ENV_PREFIX: &str = "ARESTICRAT";
 
 const DEFAULT_VERBOSITY: usize = 3;
 static VERBOSITY: OnceLock<usize> = OnceLock::new();
