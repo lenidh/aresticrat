@@ -5,6 +5,7 @@ license = "BSD-2-Clause"
 license-file = "LICENSE"
 
 edition = "2021"
+rust-version = "1.75"
 
 build = "build.rs"
 
