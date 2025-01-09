@@ -1,4 +1,8 @@
 
+<div class="intro" align="center">
+   <img src="intro.svg" alt="Aresticrat /ˈær.e.stɪ.kræt/" />
+</div>
+
 # Introduction
 **Aresticrat** is a user-friendly wrapper for the Restic backup tool, streamlining backup management with the following key features:
 - Configuration file: Simplifies backup setup by using a configuration file instead of requiring complex command-line options.

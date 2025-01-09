@@ -1,0 +1,38 @@
+<svg fill="none" viewBox="0 0 600 100" width="600" height="100" xmlns="http://www.w3.org/2000/svg">
+    <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+                .container {
+                    width: 100%;
+                    height: 100px;
+
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+
+                    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    color: #050501;
+                }
+                @media (prefers-color-scheme: dark) {
+                    .container {
+                        color: #fbfbfe;
+                    }
+                }
+                #app-name {
+                    margin: 0;
+                    padding: 0;
+                }
+                #app-name-ipa {
+                    margin: 0;
+                    padding: 0;
+                    color: gray;
+                }
+            </style>
+            <div class="container">
+                <h1 id="app-name">Aresticrat</h1>
+                <p id="app-name-ipa">/ˈær.e.stɪ.kræt/</p>
+            </div>
+        </div>
+    </foreignObject>
+</svg>
