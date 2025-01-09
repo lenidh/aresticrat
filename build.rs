@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 
-const HASHED_FILES: [&str; 3] = [ "Cargo.lock", "cargo-about.hbs", "cargo-about.toml" ];
+const HASHED_FILES: [&str; 3] = ["Cargo.lock", "cargo-about.hbs", "cargo-about.toml"];
 const DIGEST_FILE_NAME: &str = "cargo-about.digest";
 const ABOUT_FILE_NAME: &str = "about.html";
 const ABOUT_CONFIG: &str = "cargo-about.toml";
