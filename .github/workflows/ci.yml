@@ -59,7 +59,7 @@ jobs:
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Install cargo-about
-        run: cargo install cargo-about
+        run: cargo install cargo-about@0.6.4
       - name: Run
         run: cargo test --verbose --locked --release --target ${{ matrix.target }}
   fmt:
