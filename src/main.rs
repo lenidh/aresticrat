@@ -38,7 +38,7 @@ fn init_verbosity(quiet: bool, inc: usize) {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    if let Command::About = args.command() {
+    if let Command::License = args.command() {
         return about();
     }
 
@@ -68,7 +68,7 @@ fn handle_command(args: Args) -> Result<()> {
         Command::Exec(exec_args) => exec(&config, exec_args)?,
         Command::Forget(forget_args) => forget(&config, forget_args)?,
         Command::Verify(verify_args) => verify(&config, verify_args)?,
-        Command::About => panic!("Command must be handled earlier."),
+        Command::License => panic!("Command must be handled earlier."),
     }
 
     Ok(())
@@ -226,8 +226,7 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
 
 fn about() -> Result<()> {
     let about_html = include_bytes!(env!("ABOUT_HTML_PATH"));
-    let about_path = std::env::temp_dir().join("about-aresticrat.html");
-    let about_path = std::fs::canonicalize(about_path)?;
+    let about_path = std::env::temp_dir().canonicalize()?.join("about-aresticrat.html");
     std::fs::write(&about_path, about_html)?;
     open::that(&about_path)?;
 

@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 const DIGEST_FILE_NAME: &str = "about.Cargo.lock.digest";
 const ABOUT_FILE_NAME: &str = "about.html";
+const ABOUT_CONFIG: &str = "cargo-about.toml";
+const ABOUT_TEMPLATE: &str = "cargo-about.hbs";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     generate_about_html()
@@ -18,7 +20,7 @@ fn generate_about_html() -> Result<(), Box<dyn Error>> {
     let last_digest = read_last_cargo_lock_digest(&digest_path)?;
     let digest = compute_cargo_lock_digest()?;
 
-    if !std::fs::exists(&about_path)? || last_digest != digest {
+    if !&about_path.try_exists()? || last_digest != digest {
         exec_about_generator(&about_path)?;
         std::fs::write(digest_path, digest)?;
     }
@@ -55,11 +57,12 @@ where
     let mut cmd = std::process::Command::new("cargo");
     cmd.arg("about");
     cmd.arg("generate");
-    cmd.arg("--locked");
     cmd.arg("--fail");
+    cmd.arg("--config");
+    cmd.arg(ABOUT_CONFIG);
     cmd.arg("--output-file");
     cmd.arg(path.as_ref());
-    cmd.arg("about.hbs");
+    cmd.arg(ABOUT_TEMPLATE);
 
     let status = cmd.status()?;
     if !status.success() {

@@ -1,0 +1,15 @@
+accepted = [
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "MIT",
+    "Apache-2.0",
+]
+
+[json5]
+accepted = [ "ISC" ]
+
+[tiny-keccak]
+accepted = [ "CC0-1.0" ]
+
+[unicode-ident]
+accepted = [ "Unicode-3.0" ]
