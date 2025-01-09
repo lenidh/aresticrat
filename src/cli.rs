@@ -64,6 +64,8 @@ pub enum Command {
     /// Validate the configuration file and test access to configured
     /// repositories.
     Verify(VerifyArgs),
+    /// Show copyright and license information.
+    About,
 }
 
 #[derive(ClapArgs, Debug)]

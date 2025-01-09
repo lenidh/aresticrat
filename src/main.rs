@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
 use std::{
     env,
-    error::Error,
     io::{ErrorKind, IsTerminal},
     path::{Path, PathBuf},
     sync::OnceLock,
@@ -37,8 +36,11 @@ fn init_verbosity(quiet: bool, inc: usize) {
     VERBOSITY.get_or_init(|| verbosity);
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let args = Args::parse();
+    if let Command::About = args.command() {
+        return about();
+    }
 
     init_verbosity(args.quiet(), args.verbose() as usize);
 
@@ -58,7 +60,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn handle_command(args: Args) -> Result<(), Box<dyn Error>> {
+fn handle_command(args: Args) -> Result<()> {
     let config = config::Config::new(args.config_file())?;
 
     match args.command() {
@@ -66,6 +68,7 @@ fn handle_command(args: Args) -> Result<(), Box<dyn Error>> {
         Command::Exec(exec_args) => exec(&config, exec_args)?,
         Command::Forget(forget_args) => forget(&config, forget_args)?,
         Command::Verify(verify_args) => verify(&config, verify_args)?,
+        Command::About => panic!("Command must be handled earlier."),
     }
 
     Ok(())
@@ -221,7 +224,25 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
     Ok(())
 }
 
-fn load_env_files(additional_files: &[PathBuf]) -> Result<(), Box<dyn Error>> {
+fn about() -> Result<()> {
+    let about_html = include_bytes!(env!("ABOUT_HTML_PATH"));
+    let about_path = std::env::temp_dir().join("about-aresticrat.html");
+    let about_path = std::fs::canonicalize(about_path)?;
+    std::fs::write(&about_path, about_html)?;
+    open::that(&about_path)?;
+
+    println!(
+        concat!(
+            "The information should automatically appear in your default web",
+            "browser. If it doesn't, you can find it here: {}"
+        ),
+        about_path.display()
+    );
+
+    Ok(())
+}
+
+fn load_env_files(additional_files: &[PathBuf]) -> Result<()> {
     load_env_file(".env")?;
     load_env_file(".aresticrat.env")?;
     load_env_file("aresticrat.env")?;
@@ -231,14 +252,14 @@ fn load_env_files(additional_files: &[PathBuf]) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_env_file<P>(file: P) -> Result<(), Box<dyn Error>>
+fn load_env_file<P>(file: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
     match dotenvy::from_path_override(file) {
         Ok(_) => Ok(()),
         Err(dotenvy::Error::Io(e)) if e.kind() == ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(Box::new(e)),
+        Err(e) => Err(e.into()),
     }
 }
 
