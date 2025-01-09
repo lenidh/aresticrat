@@ -12,26 +12,25 @@
                     align-items: center;
 
                     font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                }
-                .container {
-                    margin: 0;
-                    padding: 0;
-
                     color: #050501;
-                }
-                #app-name-ipa {
-                    margin: 0;
-                    padding: 0;
-                    color: gray;
                 }
                 @media (prefers-color-scheme: dark) {
                     .container {
                         color: #fbfbfe;
                     }
                 }
+                #app-name {
+                    margin: 0;
+                    padding: 0;
+                }
+                #app-name-ipa {
+                    margin: 0;
+                    padding: 0;
+                    color: gray;
+                }
             </style>
             <div class="container">
-                <h1>Aresticrat</h1>
+                <h1 id="app-name">Aresticrat</h1>
                 <p id="app-name-ipa">/ˈær.e.stɪ.kræt/</p>
             </div>
         </div>
