@@ -52,12 +52,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Install Rust
+        id: toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: "${{ matrix.target }}"
           toolchain: "${{ matrix.toolchain }}"
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
+      - name: Override rust-toolchain.toml
+        run: rustup override set ${{steps.toolchain.outputs.name}}
+      - name: Install cargo-about
+        run: cargo install --verbose --locked cargo-about@0.6.4
       - name: Run
         run: cargo test --verbose --locked --release --target ${{ matrix.target }}
   fmt:
@@ -88,5 +93,7 @@ jobs:
           components: clippy
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
+      - name: Install cargo-about
+        run: cargo install --verbose --locked cargo-about@0.6.4
       - name: Run
         run: cargo clippy --verbose -- -D warnings
