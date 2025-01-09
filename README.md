@@ -1,5 +1,5 @@
 
-<div class="intro">
+<div class="intro" align="center">
    <img src="intro.svg" alt="Aresticrat /ˈær.e.stɪ.kræt/" />
 </div>
 

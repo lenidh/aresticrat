@@ -13,19 +13,26 @@
 
                     font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 }
-                .container > h1 {
+                .container {
                     margin: 0;
                     padding: 0;
+
+                    color: #050501;
                 }
-                .container > p {
+                #app-name-ipa {
                     margin: 0;
                     padding: 0;
                     color: gray;
                 }
+                @media (prefers-color-scheme: dark) {
+                    .container {
+                        color: #fbfbfe;
+                    }
+                }
             </style>
             <div class="container">
                 <h1>Aresticrat</h1>
-                <p>/ˈær.e.stɪ.kræt/</p>
+                <p id="app-name-ipa">/ˈær.e.stɪ.kræt/</p>
             </div>
         </div>
     </foreignObject>
