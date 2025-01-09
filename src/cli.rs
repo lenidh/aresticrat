@@ -65,7 +65,7 @@ pub enum Command {
     /// repositories.
     Verify(VerifyArgs),
     /// Show copyright and license information.
-    #[command(alias="licenses")]
+    #[command(alias = "licenses")]
     License,
 }
 

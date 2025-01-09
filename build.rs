@@ -25,7 +25,10 @@ fn generate_about_html() -> Result<(), Box<dyn Error>> {
         std::fs::write(digest_path, digest)?;
     }
 
-    println!("cargo:rustc-env=ABOUT_HTML_PATH={}", &about_path.canonicalize()?.display());
+    println!(
+        "cargo:rustc-env=ABOUT_HTML_PATH={}",
+        &about_path.canonicalize()?.display()
+    );
 
     Ok(())
 }

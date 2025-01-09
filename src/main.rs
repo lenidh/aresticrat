@@ -226,7 +226,9 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
 
 fn about() -> Result<()> {
     let about_html = include_bytes!(env!("ABOUT_HTML_PATH"));
-    let about_path = std::env::temp_dir().canonicalize()?.join("about-aresticrat.html");
+    let about_path = std::env::temp_dir()
+        .canonicalize()?
+        .join("about-aresticrat.html");
     std::fs::write(&about_path, about_html)?;
     open::that(&about_path)?;
 
