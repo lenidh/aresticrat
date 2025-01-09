@@ -3,7 +3,8 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 
-const DIGEST_FILE_NAME: &str = "about.Cargo.lock.digest";
+const HASHED_FILES: [&str; 3] = ["Cargo.lock", "cargo-about.hbs", "cargo-about.toml"];
+const DIGEST_FILE_NAME: &str = "cargo-about.digest";
 const ABOUT_FILE_NAME: &str = "about.html";
 const ABOUT_CONFIG: &str = "cargo-about.toml";
 const ABOUT_TEMPLATE: &str = "cargo-about.hbs";
@@ -17,7 +18,7 @@ fn generate_about_html() -> Result<(), Box<dyn Error>> {
     let about_path = PathBuf::from(&out_dir).join(ABOUT_FILE_NAME);
     let digest_path = PathBuf::from(&out_dir).join(DIGEST_FILE_NAME);
 
-    let last_digest = read_last_cargo_lock_digest(&digest_path)?;
+    let last_digest = read_to_string_or_empty(&digest_path)?;
     let digest = compute_cargo_lock_digest()?;
 
     if !&about_path.try_exists()? || last_digest != digest {
@@ -34,18 +35,21 @@ fn generate_about_html() -> Result<(), Box<dyn Error>> {
 }
 
 fn compute_cargo_lock_digest() -> Result<String, Box<dyn Error>> {
-    let cargo_lock = std::fs::read_to_string("Cargo.lock")?;
-    Ok(sha256::digest(cargo_lock))
+    let mut buf = String::new();
+    for f in HASHED_FILES {
+        buf.push_str(&read_to_string_or_empty(f)?);
+    }
+    Ok(sha256::digest(buf))
 }
 
-fn read_last_cargo_lock_digest<P>(path: P) -> Result<String, std::io::Error>
+fn read_to_string_or_empty<P>(path: P) -> Result<String, std::io::Error>
 where
     P: AsRef<Path>,
 {
     match std::fs::read_to_string(path) {
         Ok(s) => Ok(s),
-        Err(e) if e.kind() == ErrorKind::NotFound => Ok(String::new()),
-        Err(e) => Err(e),
+        Err(err) if err.kind() == ErrorKind::NotFound => Ok(String::new()),
+        Err(err) => Err(err),
     }
 }
 
