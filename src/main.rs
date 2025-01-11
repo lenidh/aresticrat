@@ -1,17 +1,20 @@
 use anyhow::{Context, Result};
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
 use std::{
+    collections::{HashMap, HashSet},
     env,
     io::{ErrorKind, IsTerminal},
     path::{Path, PathBuf},
     sync::OnceLock,
 };
 
-use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location, Name};
 
 use clap::Parser as ClapParser;
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing_subscriber::{
+    filter::targets, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+};
 
 mod cli;
 mod config;
@@ -78,7 +81,7 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
     for (location_name, location) in config.locations() {
-        let _span = tracing::info_span!("Backup", location = location_name).entered();
+        let _span = tracing::info_span!("Backup", location = location_name.as_str()).entered();
 
         let tag = get_tag(location_name);
         let backup_opts = get_backup_options(location_name, config);
@@ -148,20 +151,29 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
 fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
-    let locations = args
-        .locations()
-        .iter()
-        .map(|name| {
-            config
-                .locations()
-                .get(name)
-                .map(|l| (name, l))
-                .context(format!("Location {name} is undefined."))
-        })
-        .collect::<Result<Vec<_>>>()?;
+    let mut m: HashMap<Name, HashSet<Name>> = HashMap::new();
+    for t in args.locations() {
+        let set = m.entry(t.location().clone()).or_insert_with(HashSet::new);
+        if let Some(r) = t.repo() {
+            set.insert(r.clone());
+        } else {
+            let a = config.locations()[t.location()].repos();
+            a.iter().for_each(|x| {
+                set.insert(x.clone());
+            });
+        }
+    }
 
-    for (location_name, location) in locations {
-        forget_location(&api, location_name, location, config, args.dry_run())?;
+    for (location_name, repo_names) in m {
+        let location = config.locations()[&location_name];
+        forget_location(
+            &api,
+            &location_name,
+            &location,
+            &repo_names,
+            config,
+            args.dry_run(),
+        )?;
     }
 
     Ok(())
@@ -169,8 +181,9 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
 
 fn forget_location(
     api: &restic_api::Api,
-    location_name: &str,
+    location_name: &Name,
     location: &Location,
+    repo_names: &HashSet<Name>,
     config: &Config,
     dry_run: bool,
 ) -> Result<()> {
@@ -279,11 +292,11 @@ fn setup_logger() {
         .init();
 }
 
-fn get_tag(location_name: &str) -> String {
+fn get_tag(location_name: &Name) -> String {
     format!("_aresticrat_{location_name}")
 }
 
-fn get_backup_options(location_name: &str, config: &Config) -> BackupOptions {
+fn get_backup_options(location_name: &Name, config: &Config) -> BackupOptions {
     config
         .locations()
         .get(location_name)
@@ -293,7 +306,7 @@ fn get_backup_options(location_name: &str, config: &Config) -> BackupOptions {
         .unwrap_or_default()
 }
 
-fn get_forget_options(location_name: &str, config: &Config) -> ForgetOptions {
+fn get_forget_options(location_name: &Name, config: &Config) -> ForgetOptions {
     config
         .locations()
         .get(location_name)

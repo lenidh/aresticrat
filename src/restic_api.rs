@@ -8,6 +8,7 @@ use thiserror::Error;
 
 use crate::config::BackupOptions;
 use crate::config::ForgetOptions;
+use crate::config::Name;
 use crate::config::Repo;
 use crate::run;
 use crate::ENV_PREFIX;
@@ -23,7 +24,7 @@ impl Api {
 
     pub fn backup<I, P, S>(
         &self,
-        repo_name: &str,
+        repo_name: &Name,
         repo: &Repo,
         paths: I,
         tag: S,
@@ -69,7 +70,7 @@ impl Api {
 
     pub fn forget<S>(
         &self,
-        repo_name: &str,
+        repo_name: &Name,
         repo: &Repo,
         tag: S,
         options: &ForgetOptions,
@@ -115,7 +116,7 @@ impl Api {
         run(&mut forget_cmd)
     }
 
-    pub fn status(&self, repo_name: &str, repo_path: &str, key: &str) -> Result<RepoStatus> {
+    pub fn status(&self, repo_name: &Name, repo_path: &str, key: &str) -> Result<RepoStatus> {
         let mut cmd = self.command(repo_name, repo_path, key);
         cmd.arg("cat");
         cmd.arg("config");
@@ -133,13 +134,13 @@ impl Api {
         }
     }
 
-    pub fn init(&self, repo_name: &str, repo_path: &str, key: &str) -> Result<()> {
+    pub fn init(&self, repo_name: &Name, repo_path: &str, key: &str) -> Result<()> {
         let mut cmd = self.command(repo_name, repo_path, key);
         cmd.arg("init");
         run(&mut cmd)
     }
 
-    pub fn exec<I, S>(&self, repo_name: &str, repo: &Repo, args: I) -> Result<()>
+    pub fn exec<I, S>(&self, repo_name: &Name, repo: &Repo, args: I) -> Result<()>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -151,9 +152,9 @@ impl Api {
         run(&mut cmd)
     }
 
-    fn command(&self, repo_name: &str, path: &str, key: &str) -> Command {
+    fn command(&self, repo_name: &Name, path: &str, key: &str) -> Command {
         let env_prefix = format!("{ENV_PREFIX}_R_");
-        let repo_env_prefix = format!("{}{}_", env_prefix, repo_name.to_uppercase());
+        let repo_env_prefix = format!("{}{}_", env_prefix, repo_name.as_str().to_uppercase());
 
         let vars = std::env::vars()
             .map(|(mut k, v)| {

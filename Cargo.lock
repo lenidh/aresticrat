@@ -102,6 +102,7 @@ dependencies = [
  "config",
  "dotenvy",
  "open",
+ "regex",
  "serde",
  "sha256",
  "shell-words",

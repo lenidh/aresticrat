@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::error::Error;
+use std::fmt::Display;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use serde::Deserialize;
 use thiserror::Error;
@@ -14,8 +17,8 @@ pub struct Config {
     executable: String,
     #[serde(default)]
     options: Options,
-    repos: HashMap<String, Repo>,
-    locations: HashMap<String, Location>,
+    repos: HashMap<Name, Repo>,
+    locations: HashMap<Name, Location>,
 }
 
 fn default_executable() -> String {
@@ -39,10 +42,10 @@ impl Config {
     pub fn options(&self) -> &Options {
         &self.options
     }
-    pub fn repos(&self) -> &HashMap<String, Repo> {
+    pub fn repos(&self) -> &HashMap<Name, Repo> {
         &self.repos
     }
-    pub fn locations(&self) -> &HashMap<String, Location> {
+    pub fn locations(&self) -> &HashMap<Name, Location> {
         &self.locations
     }
 }
@@ -184,7 +187,7 @@ pub struct Location {
     #[serde(alias = "from")]
     paths: Vec<PathBuf>,
     #[serde(alias = "to")]
-    repos: Vec<String>,
+    repos: Vec<Name>,
     #[serde(default)]
     options: Options,
 }
@@ -193,13 +196,163 @@ impl Location {
     pub fn paths(&self) -> &Vec<PathBuf> {
         &self.paths
     }
-    pub fn repos(&self) -> &Vec<String> {
+    pub fn repos(&self) -> &Vec<Name> {
         &self.repos
     }
     pub fn options(&self) -> &Options {
         &self.options
     }
 }
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Name(String);
+
+impl Name {
+    pub fn parse(s: &str) -> Result<Self, NameParseError> {
+        if s.chars().all(Self::is_valid_char) {
+            Ok(Self(s.to_string()))
+        } else {
+            Err(NameParseError(
+                "Invalid name (only [A-Za-z0-9_-] are allowed).".to_string(),
+            ))
+        }
+    }
+
+    fn is_valid_char(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '_' || c == '-'
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl FromStr for Name {
+    type Err = NameParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Name::parse(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for Name {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::*;
+
+        struct NameVisitor;
+
+        impl<'de> de::Visitor<'de> for NameVisitor {
+            type Value = Name;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a string consisting of characters [A-Za-z0-9_-]")
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Name::parse(v).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_seq(NameVisitor)
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("{0}")]
+pub struct NameParseError(String);
+
+#[derive(Clone, Debug)]
+pub struct LocationRepo(Name, Option<Name>);
+
+impl LocationRepo {
+    pub fn parse(s: &str) -> Result<Self, LocationRepoParseError> {
+        Ok(match s.find('@') {
+            Some(i) => {
+                let loc = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
+                let repo = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
+                LocationRepo(loc, Some(repo))
+            },
+            None => {
+                let loc = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
+                LocationRepo(loc, None)
+            },
+        })
+    }
+
+    pub fn location(&self) -> &Name {
+        &self.0
+    }
+
+    pub fn repo(&self) -> Option<&Name> {
+        self.1.as_ref()
+    }
+}
+
+impl FromStr for LocationRepo {
+    type Err = LocationRepoParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        LocationRepo::parse(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for LocationRepo {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::*;
+
+        struct RepoNameVisitor;
+
+        impl<'de> de::Visitor<'de> for RepoNameVisitor {
+            type Value = LocationRepo;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a program name followed by any number of arguments either as a string or a sequence of string")
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                self.visit_str(&v)
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                LocationRepo::parse(v).map_err(de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_seq(RepoNameVisitor)
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("{0}")]
+pub struct LocationRepoParseError(String);
 
 #[derive(Clone, Debug)]
 pub struct CommandSeq(Vec<String>);
