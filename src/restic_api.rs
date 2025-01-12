@@ -11,6 +11,8 @@ use std::process::Command;
 use std::process::ExitStatus;
 use thiserror::Error;
 
+const BACKUP_READ_ERROR_CODE: i32 = 3;
+
 pub struct Api {
     exe: String,
 }
@@ -63,7 +65,10 @@ impl Api {
         for path in paths.into_iter().collect::<Vec<_>>() {
             cmd.arg(OsStr::new(path.as_ref()));
         }
-        run(&mut cmd)
+        match run(&mut cmd) {
+            Err(Error::CmdFailure { status, .. }) if is_backup_read_error(status) => Ok(()),
+            result => result,
+        }
     }
 
     pub fn forget<S>(
@@ -184,6 +189,10 @@ fn run(cmd: &mut Command) -> Result<()> {
             status,
         })
     }
+}
+
+fn is_backup_read_error(status: ExitStatus) -> bool {
+    status.code() == Some(BACKUP_READ_ERROR_CODE)
 }
 
 fn remove_prefix(str: &mut String, prefix: &str) -> bool {
