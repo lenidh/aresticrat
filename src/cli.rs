@@ -1,8 +1,6 @@
-use std::path::{Path, PathBuf};
-
-use clap::{Args as ClapArgs, Parser as ClapParser, Subcommand as ClapSubcommand};
-
 use crate::config::{LocationRepo, Name};
+use clap::{Args as ClapArgs, Parser as ClapParser, Subcommand as ClapSubcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(ClapParser, Debug)]
 #[command(version, about)]
@@ -73,16 +71,17 @@ pub enum Command {
 
 #[derive(ClapArgs, Debug)]
 pub struct BackupArgs {
-    #[arg(short, long)]
-    locations: Vec<LocationRepo>,
+    /// Only backup data of this location (repeatable).
+    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    selected_locations: Vec<LocationRepo>,
     /// Do not upload or write any data, just show what would be done.
     #[arg(long)]
     dry_run: bool,
 }
 
 impl BackupArgs {
-    pub fn locations(&self) -> &Vec<LocationRepo> {
-        &self.locations
+    pub fn selected_locations(&self) -> &Vec<LocationRepo> {
+        &self.selected_locations
     }
     pub fn dry_run(&self) -> bool {
         self.dry_run
@@ -111,16 +110,16 @@ impl ExecArgs {
 #[derive(ClapArgs, Debug)]
 pub struct ForgetArgs {
     /// Only remove snapshots of this location (repeatable).
-    #[arg(short, long)]
-    locations: Vec<LocationRepo>,
+    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    selected_locations: Vec<LocationRepo>,
     /// Do not delete any data, just show what would be done.
     #[arg(long)]
     dry_run: bool,
 }
 
 impl ForgetArgs {
-    pub fn locations(&self) -> &Vec<LocationRepo> {
-        &self.locations
+    pub fn selected_locations(&self) -> &Vec<LocationRepo> {
+        &self.selected_locations
     }
     pub fn dry_run(&self) -> bool {
         self.dry_run

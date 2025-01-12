@@ -1,12 +1,10 @@
+use serde::Deserialize;
 use std::collections::HashMap;
-use std::error::Error;
 use std::fmt::Display;
 use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
-
-use serde::Deserialize;
 use thiserror::Error;
 
 use crate::ENV_PREFIX;
@@ -287,14 +285,16 @@ impl LocationRepo {
     pub fn parse(s: &str) -> Result<Self, LocationRepoParseError> {
         Ok(match s.find('@') {
             Some(i) => {
-                let loc = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
-                let repo = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
+                let loc =
+                    Name::parse(&s[..i]).map_err(|e| LocationRepoParseError(e.to_string()))?;
+                let repo =
+                    Name::parse(&s[i + 1..]).map_err(|e| LocationRepoParseError(e.to_string()))?;
                 LocationRepo(loc, Some(repo))
-            },
+            }
             None => {
                 let loc = Name::parse(s).map_err(|e| LocationRepoParseError(e.to_string()))?;
                 LocationRepo(loc, None)
-            },
+            }
         })
     }
 

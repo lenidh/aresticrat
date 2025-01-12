@@ -1,5 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
+use clap::Parser as ClapParser;
 use cli::{Args, BackupArgs, Command, ExecArgs, ForgetArgs, VerifyArgs};
+use config::{BackupOptions, CommandSeq, Config, ForgetOptions, LocationRepo, Name};
 use std::{
     collections::{HashMap, HashSet},
     env,
@@ -7,14 +9,8 @@ use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
 };
-
-use config::{BackupOptions, CommandSeq, Config, ForgetOptions, Location, Name};
-
-use clap::Parser as ClapParser;
 use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{
-    filter::targets, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
-};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
 
 mod cli;
 mod config;
@@ -80,7 +76,10 @@ fn handle_command(args: Args) -> Result<()> {
 fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
-    for (location_name, location) in config.locations() {
+    let m = resolve_selection(args.selected_locations(), config)?;
+
+    for (location_name, repo_names) in &m {
+        let location = &config.locations()[&location_name];
         let _span = tracing::info_span!("Backup", location = location_name.as_str()).entered();
 
         let tag = get_tag(location_name);
@@ -94,7 +93,7 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
             continue;
         }
 
-        for repo_name in location.repos() {
+        for repo_name in repo_names {
             if let Some(repo) = config.repos().get(repo_name) {
                 print_log!(Level::INFO, "Backup to repository {repo_name} ...");
                 api.backup(
@@ -115,7 +114,7 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         }
 
         if !args.dry_run() && backup_opts.forget() {
-            forget_location(&api, location_name, location, config, args.dry_run())?;
+            forget_location(&api, location_name, repo_names, config, args.dry_run())?;
         }
     }
     Ok(())
@@ -151,29 +150,10 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
 fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
-    let mut m: HashMap<Name, HashSet<Name>> = HashMap::new();
-    for t in args.locations() {
-        let set = m.entry(t.location().clone()).or_insert_with(HashSet::new);
-        if let Some(r) = t.repo() {
-            set.insert(r.clone());
-        } else {
-            let a = config.locations()[t.location()].repos();
-            a.iter().for_each(|x| {
-                set.insert(x.clone());
-            });
-        }
-    }
+    let m = resolve_selection(args.selected_locations(), config)?;
 
-    for (location_name, repo_names) in m {
-        let location = config.locations()[&location_name];
-        forget_location(
-            &api,
-            &location_name,
-            &location,
-            &repo_names,
-            config,
-            args.dry_run(),
-        )?;
+    for (location_name, repo_names) in &m {
+        forget_location(&api, location_name, repo_names, config, args.dry_run())?;
     }
 
     Ok(())
@@ -182,7 +162,6 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
 fn forget_location(
     api: &restic_api::Api,
     location_name: &Name,
-    location: &Location,
     repo_names: &HashSet<Name>,
     config: &Config,
     dry_run: bool,
@@ -198,7 +177,7 @@ fn forget_location(
         return Ok(());
     }
 
-    for repo_name in location.repos() {
+    for repo_name in repo_names {
         if let Some(repo) = config.repos().get(repo_name) {
             print_log!(Level::INFO, "Forget from repository {repo_name} ...");
             api.forget(repo_name, repo, &tag, &forget_opts, dry_run)?;
@@ -314,6 +293,31 @@ fn get_forget_options(location_name: &Name, config: &Config) -> ForgetOptions {
         .or_else(|| config.options().forget())
         .cloned()
         .unwrap_or_default()
+}
+
+fn resolve_selection(
+    selection: &[LocationRepo],
+    config: &Config,
+) -> Result<HashMap<Name, HashSet<Name>>> {
+    let mut m: HashMap<Name, HashSet<Name>> = HashMap::new();
+    for t in selection {
+        let assigned_repos = config.locations()[t.location()].repos();
+        let set = m.entry(t.location().clone()).or_default();
+        if let Some(r) = t.repo() {
+            if assigned_repos.contains(r) {
+                set.insert(r.clone());
+            } else {
+                print_log!(Level::WARN, "Combination {r} is invalid.")
+            }
+        } else {
+            let a = config.locations()[t.location()].repos();
+            a.iter().for_each(|x| {
+                set.insert(x.clone());
+            });
+        }
+    }
+    m.retain(|_k, v| !v.is_empty());
+    Ok(m)
 }
 
 macro_rules! print_log {

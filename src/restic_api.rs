@@ -1,17 +1,15 @@
-use std::ffi::OsStr;
-use std::ffi::OsString;
-use std::path::Path;
-use std::process::Command;
-use std::process::ExitStatus;
-
-use thiserror::Error;
-
 use crate::config::BackupOptions;
 use crate::config::ForgetOptions;
 use crate::config::Name;
 use crate::config::Repo;
 use crate::run;
 use crate::ENV_PREFIX;
+use std::ffi::OsStr;
+use std::ffi::OsString;
+use std::path::Path;
+use std::process::Command;
+use std::process::ExitStatus;
+use thiserror::Error;
 
 pub struct Api {
     exe: String,

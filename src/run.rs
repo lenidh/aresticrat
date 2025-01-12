@@ -1,19 +1,17 @@
+use crate::print_log;
+use crate::verbosity;
+use crate::DEFAULT_VERBOSITY;
 use std::borrow::BorrowMut;
 use std::io::Read;
 use std::io::Write;
 use std::process::Command;
 use std::process::Stdio;
 use std::thread::JoinHandle;
-
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 use tracing::Level;
 use tracing_subscriber::fmt::writer::EitherWriter;
-
-use crate::print_log;
-use crate::verbosity;
-use crate::DEFAULT_VERBOSITY;
 
 pub fn run_sequential<C, I>(
     cmds: I,
