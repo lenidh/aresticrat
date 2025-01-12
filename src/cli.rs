@@ -1,6 +1,6 @@
-use std::path::{Path, PathBuf};
-
+use crate::config::{LocationRepo, Name};
 use clap::{Args as ClapArgs, Parser as ClapParser, Subcommand as ClapSubcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(ClapParser, Debug)]
 #[command(version, about)]
@@ -71,12 +71,18 @@ pub enum Command {
 
 #[derive(ClapArgs, Debug)]
 pub struct BackupArgs {
+    /// Only backup data of this location (repeatable).
+    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    selected_locations: Vec<LocationRepo>,
     /// Do not upload or write any data, just show what would be done.
     #[arg(long)]
     dry_run: bool,
 }
 
 impl BackupArgs {
+    pub fn selected_locations(&self) -> &Vec<LocationRepo> {
+        &self.selected_locations
+    }
     pub fn dry_run(&self) -> bool {
         self.dry_run
     }
@@ -86,14 +92,14 @@ impl BackupArgs {
 pub struct ExecArgs {
     /// Only run the command for this repository (repeatable).
     #[arg(short, long = "repo", value_name = "REPO")]
-    repos: Vec<String>,
+    repos: Vec<Name>,
     /// One or more arguments passed to the restic executable.
     #[arg(required = true, raw = true, value_name = "ARG")]
     args: Vec<String>,
 }
 
 impl ExecArgs {
-    pub fn repos(&self) -> &[String] {
+    pub fn repos(&self) -> &[Name] {
         &self.repos
     }
     pub fn args(&self) -> &[String] {
@@ -104,16 +110,16 @@ impl ExecArgs {
 #[derive(ClapArgs, Debug)]
 pub struct ForgetArgs {
     /// Only remove snapshots of this location (repeatable).
-    #[arg(short, long)]
-    locations: Vec<String>,
+    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    selected_locations: Vec<LocationRepo>,
     /// Do not delete any data, just show what would be done.
     #[arg(long)]
     dry_run: bool,
 }
 
 impl ForgetArgs {
-    pub fn locations(&self) -> &Vec<String> {
-        &self.locations
+    pub fn selected_locations(&self) -> &Vec<LocationRepo> {
+        &self.selected_locations
     }
     pub fn dry_run(&self) -> bool {
         self.dry_run
