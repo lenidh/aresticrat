@@ -75,7 +75,7 @@ pub struct BackupArgs {
     #[arg(short = 'l', long = "location", value_name = "LOCATION[@REPO]")]
     selected_locations: Vec<LocationRepo>,
     /// Do not upload or write any data, just show what would be done.
-    #[arg(long)]
+    #[arg(short = 'n', long)]
     dry_run: bool,
 }
 
@@ -113,7 +113,7 @@ pub struct ForgetArgs {
     #[arg(short = 'l', long = "location", value_name = "LOCATION[@REPO]")]
     selected_locations: Vec<LocationRepo>,
     /// Do not delete any data, just show what would be done.
-    #[arg(long)]
+    #[arg(short = 'n', long)]
     dry_run: bool,
 }
 
