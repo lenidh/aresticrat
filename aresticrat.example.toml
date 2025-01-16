@@ -32,6 +32,31 @@ exclude = [ ]
 iexclude = [ ]
 exclude-file = [ ]
 iexclude-file = [ ]
+exclude-if-present = [ ]
+#exclude-larger-than = n
+
+# If true, ignore ctime changes when checking for modified files.
+ignore-ctime = false
+
+# If true, ignore inode number and ctime changes when checking for modified
+# files
+ignore-inode = false
+
+# If true, do not run scanner to estimate size of backup
+no-scan = false
+
+# If true, exclude other file systems, don't cross filesystem boundaries and
+# subvolumes.
+one-file-system = false
+
+# If true, skip snapshot creation if identical to parent snapshot.
+skip-if-unchanged = false
+
+# If true, use filesystem snapshot where possible (currently only Windows VSS)
+use-fs-snapshot = false
+
+# If true, store the atime for all files and directories
+with-atime = false
 
 # Commands that are run before a location backup is done.
 # The location will be skipped, if any of these commands does not terminate with
@@ -55,6 +80,20 @@ prune = false
 #keep-weekly = n
 #keep-monthly = n
 #keep-yearly = n
+
+# Keep snapshots that are newer than duration (eg. 1y5m7d2h) relative to the
+# latest snapshot
+#keep-within = duration
+# Keep hourly, daily, weekly, monthly or yearly snapshots that are newer than
+# duration (eg. 1y5m7d2h) relative to the latest snapshot
+#keep-within-hourly = duration
+#keep-within-daily = duration
+#keep-within-weekly = duration
+#keep-within-monthly = duration
+#keep-within-yearly = duration
+
+# Keep snapshots with this taglist
+keep-tag = [ ]
 
 # Commands that are run before a location forget is done.
 # The location will be skipped, if any of these commands does not terminate with
