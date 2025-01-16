@@ -235,11 +235,14 @@ impl ForgetOptions {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Repo {
     #[serde(default)]
     path: String,
     #[serde(default)]
     key: String,
+    #[serde(default)]
+    retry_lock: String,
     #[serde(default)]
     options: Vec<String>,
 }
@@ -250,6 +253,9 @@ impl Repo {
     }
     pub fn key(&self) -> &str {
         &self.key
+    }
+    pub fn retry_lock(&self) -> &str {
+        &self.retry_lock
     }
     pub fn options(&self) -> &Vec<String> {
         &self.options
