@@ -192,7 +192,7 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
     for (repo_name, repo) in config.repos() {
-        let status = api.status(repo_name, &repo)?;
+        let status = api.status(repo_name, repo)?;
 
         use restic_api::RepoStatus::*;
         match status {
