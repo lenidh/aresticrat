@@ -28,7 +28,7 @@ impl Api {
         repo: &Repo,
         paths: I,
         tag: S,
-        backup_options: &BackupOptions,
+        options: &BackupOptions,
         dry_run: bool,
     ) -> Result<()>
     where
@@ -41,24 +41,53 @@ impl Api {
         if dry_run {
             cmd.arg("--dry-run");
         }
-        for pattern in backup_options.exclude() {
+        for pattern in options.exclude() {
             cmd.arg("--exclude");
             cmd.arg(pattern);
         }
-        for pattern in backup_options.iexclude() {
+        for pattern in options.iexclude() {
             cmd.arg("--iexclude");
             cmd.arg(pattern);
         }
-        for file in backup_options.exclude_file() {
+        for file in options.exclude_file() {
             cmd.arg("--exclude-file");
             cmd.arg(file);
         }
-        for file in backup_options.iexclude_file() {
+        for file in options.iexclude_file() {
             cmd.arg("--iexclude-file");
             cmd.arg(file);
         }
-        if backup_options.exclude_caches() {
+        for file in options.exclude_if_present() {
+            cmd.arg("--exclude-if-present");
+            cmd.arg(file);
+        }
+        if let Some(size) = options.exclude_larger_than() {
+            cmd.arg("--exclude-larger-than");
+            cmd.arg(size);
+        }
+        if options.exclude_caches() {
             cmd.arg("--exclude-caches");
+        }
+        if options.ignore_ctime() {
+            cmd.arg("--ignore-ctime");
+        }
+        if options.ignore_inode() {
+            cmd.arg("--ignore-inode");
+        }
+        if options.no_scan() {
+            cmd.arg("--no-scan");
+        }
+        if options.one_file_system() {
+            cmd.arg("--one-file-system");
+        }
+        if options.skip_if_unchanged() {
+            cmd.arg("--skip-if-unchanged");
+        }
+        if options.use_fs_snapshot() {
+            cmd.arg("--use-fs-snapshot");
+        }
+        if options.with_atime() {
+            cmd.arg("--with-atime");
         }
         cmd.arg("--tag");
         cmd.arg(tag.as_ref());
@@ -82,41 +111,69 @@ impl Api {
     where
         S: AsRef<str>,
     {
-        let mut forget_cmd = self.command(repo_name, repo.path(), repo.key());
-        forget_cmd.arg("forget");
+        let mut cmd = self.command(repo_name, repo.path(), repo.key());
+        cmd.arg("forget");
         if dry_run {
-            forget_cmd.arg("--dry-run");
+            cmd.arg("--dry-run");
         }
         if options.prune() {
-            forget_cmd.arg("--prune");
+            cmd.arg("--prune");
         }
         if let Some(n) = options.keep_last() {
-            forget_cmd.arg("--keep-last");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-last");
+            cmd.arg(format!("{n}"));
         }
         if let Some(n) = options.keep_hourly() {
-            forget_cmd.arg("--keep-hourly");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-hourly");
+            cmd.arg(format!("{n}"));
         }
         if let Some(n) = options.keep_daily() {
-            forget_cmd.arg("--keep-daily");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-daily");
+            cmd.arg(format!("{n}"));
         }
         if let Some(n) = options.keep_weekly() {
-            forget_cmd.arg("--keep-weekly");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-weekly");
+            cmd.arg(format!("{n}"));
         }
         if let Some(n) = options.keep_monthly() {
-            forget_cmd.arg("--keep-monthly");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-monthly");
+            cmd.arg(format!("{n}"));
         }
         if let Some(n) = options.keep_yearly() {
-            forget_cmd.arg("--keep-yearly");
-            forget_cmd.arg(format!("{n}"));
+            cmd.arg("--keep-yearly");
+            cmd.arg(format!("{n}"));
         }
-        forget_cmd.arg("--tag");
-        forget_cmd.arg(tag.as_ref());
-        run(&mut forget_cmd)
+        if let Some(duration) = options.keep_within() {
+            cmd.arg("--keep-within");
+            cmd.arg(duration);
+        }
+        if let Some(duration) = options.keep_within_hourly() {
+            cmd.arg("--keep-within-hourly");
+            cmd.arg(duration);
+        }
+        if let Some(duration) = options.keep_within_daily() {
+            cmd.arg("--keep-within-daily");
+            cmd.arg(duration);
+        }
+        if let Some(duration) = options.keep_within_weekly() {
+            cmd.arg("--keep-within-weekly");
+            cmd.arg(duration);
+        }
+        if let Some(duration) = options.keep_within_monthly() {
+            cmd.arg("--keep-within-monthly");
+            cmd.arg(duration);
+        }
+        if let Some(duration) = options.keep_within_yearly() {
+            cmd.arg("--keep-within-yearly");
+            cmd.arg(duration);
+        }
+        for tag in options.keep_tag() {
+            cmd.arg("--keep-tag");
+            cmd.arg(tag);
+        }
+        cmd.arg("--tag");
+        cmd.arg(tag.as_ref());
+        run(&mut cmd)
     }
 
     pub fn status(&self, repo_name: &Name, repo_path: &str, key: &str) -> Result<RepoStatus> {
