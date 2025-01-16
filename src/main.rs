@@ -192,7 +192,7 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string());
 
     for (repo_name, repo) in config.repos() {
-        let status = api.status(repo_name, repo.path(), repo.key())?;
+        let status = api.status(repo_name, repo)?;
 
         use restic_api::RepoStatus::*;
         match status {
@@ -204,7 +204,7 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
                     Level::DEBUG,
                     "Repository {repo_name} not found. Initialize ..."
                 );
-                api.init(repo_name, repo.path(), repo.key())?;
+                api.init(repo_name, repo)?;
                 print_log!(Level::INFO, "Repository {repo_name}: INITIALIZED")
             }
             NoRepository => print_log!(Level::ERROR, "Repository {repo_name}: NOT FOUND"),

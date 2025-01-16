@@ -240,6 +240,8 @@ pub struct Repo {
     path: String,
     #[serde(default)]
     key: String,
+    #[serde(default)]
+    options: Vec<String>,
 }
 
 impl Repo {
@@ -248,6 +250,9 @@ impl Repo {
     }
     pub fn key(&self) -> &str {
         &self.key
+    }
+    pub fn options(&self) -> &Vec<String> {
+        &self.options
     }
 }
 
