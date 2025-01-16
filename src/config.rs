@@ -78,8 +78,24 @@ pub struct BackupOptions {
     iexclude_file: Vec<PathBuf>,
     #[serde(default)]
     exclude_caches: bool,
-    // TODO: larger-than
-    // TODO: if-present
+    #[serde(default)]
+    exclude_if_present: Vec<String>,
+    #[serde(default)]
+    exclude_larger_than: Option<String>,
+    #[serde(default)]
+    ignore_ctime: bool,
+    #[serde(default)]
+    ignore_inode: bool,
+    #[serde(default)]
+    no_scan: bool,
+    #[serde(default)]
+    one_file_system: bool,
+    #[serde(default)]
+    skip_if_unchanged: bool,
+    #[serde(default)]
+    use_fs_snapshot: bool,
+    #[serde(default)]
+    with_atime: bool,
     #[serde(default)]
     hooks: HookOptions,
 }
@@ -102,6 +118,33 @@ impl BackupOptions {
     }
     pub fn exclude_caches(&self) -> bool {
         self.exclude_caches
+    }
+    pub fn exclude_if_present(&self) -> &Vec<String> {
+        &self.exclude_if_present
+    }
+    pub fn exclude_larger_than(&self) -> Option<&str> {
+        self.exclude_larger_than.as_deref()
+    }
+    pub fn ignore_ctime(&self) -> bool {
+        self.ignore_ctime
+    }
+    pub fn ignore_inode(&self) -> bool {
+        self.ignore_inode
+    }
+    pub fn no_scan(&self) -> bool {
+        self.no_scan
+    }
+    pub fn one_file_system(&self) -> bool {
+        self.one_file_system
+    }
+    pub fn skip_if_unchanged(&self) -> bool {
+        self.skip_if_unchanged
+    }
+    pub fn use_fs_snapshot(&self) -> bool {
+        self.use_fs_snapshot
+    }
+    pub fn with_atime(&self) -> bool {
+        self.with_atime
     }
     pub fn hooks(&self) -> &HookOptions {
         &self.hooks
@@ -131,7 +174,14 @@ pub struct ForgetOptions {
     keep_weekly: Option<u32>,
     keep_monthly: Option<u32>,
     keep_yearly: Option<u32>,
-    // TODO: durations
+    keep_within: Option<String>,
+    keep_within_hourly: Option<String>,
+    keep_within_daily: Option<String>,
+    keep_within_weekly: Option<String>,
+    keep_within_monthly: Option<String>,
+    keep_within_yearly: Option<String>,
+    #[serde(default)]
+    keep_tag: Vec<String>,
     #[serde(default)]
     hooks: HookOptions,
 }
@@ -157,6 +207,27 @@ impl ForgetOptions {
     }
     pub fn keep_yearly(&self) -> Option<u32> {
         self.keep_yearly
+    }
+    pub fn keep_within(&self) -> Option<&str> {
+        self.keep_within.as_deref()
+    }
+    pub fn keep_within_hourly(&self) -> Option<&str> {
+        self.keep_within_hourly.as_deref()
+    }
+    pub fn keep_within_daily(&self) -> Option<&str> {
+        self.keep_within_daily.as_deref()
+    }
+    pub fn keep_within_weekly(&self) -> Option<&str> {
+        self.keep_within_weekly.as_deref()
+    }
+    pub fn keep_within_monthly(&self) -> Option<&str> {
+        self.keep_within_monthly.as_deref()
+    }
+    pub fn keep_within_yearly(&self) -> Option<&str> {
+        self.keep_within_yearly.as_deref()
+    }
+    pub fn keep_tag(&self) -> &Vec<String> {
+        &self.keep_tag
     }
     pub fn hooks(&self) -> &HookOptions {
         &self.hooks
