@@ -300,20 +300,29 @@ fn resolve_selection(
     config: &Config,
 ) -> Result<HashMap<Name, HashSet<Name>>> {
     let mut m: HashMap<Name, HashSet<Name>> = HashMap::new();
-    for t in selection {
-        let assigned_repos = config.locations()[t.location()].repos();
-        let set = m.entry(t.location().clone()).or_default();
-        if let Some(r) = t.repo() {
-            if assigned_repos.contains(r) {
-                set.insert(r.clone());
+    if selection.is_empty() {
+        for (location_name, location) in config.locations() {
+            m.insert(
+                location_name.clone(),
+                location.repos().iter().cloned().collect(),
+            );
+        }
+    } else {
+        for t in selection {
+            let assigned_repos = config.locations()[t.location()].repos();
+            let set = m.entry(t.location().clone()).or_default();
+            if let Some(r) = t.repo() {
+                if assigned_repos.contains(r) {
+                    set.insert(r.clone());
+                } else {
+                    print_log!(Level::WARN, "Combination {r} is invalid.")
+                }
             } else {
-                print_log!(Level::WARN, "Combination {r} is invalid.")
+                let a = config.locations()[t.location()].repos();
+                a.iter().for_each(|x| {
+                    set.insert(x.clone());
+                });
             }
-        } else {
-            let a = config.locations()[t.location()].repos();
-            a.iter().for_each(|x| {
-                set.insert(x.clone());
-            });
         }
     }
     m.retain(|_k, v| !v.is_empty());
