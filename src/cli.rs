@@ -72,7 +72,7 @@ pub enum Command {
 #[derive(ClapArgs, Debug)]
 pub struct BackupArgs {
     /// Only backup data of this location (repeatable).
-    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    #[arg(short = 'l', long = "location", value_name = "LOCATION[@REPO]")]
     selected_locations: Vec<LocationRepo>,
     /// Do not upload or write any data, just show what would be done.
     #[arg(long)]
@@ -110,7 +110,7 @@ impl ExecArgs {
 #[derive(ClapArgs, Debug)]
 pub struct ForgetArgs {
     /// Only remove snapshots of this location (repeatable).
-    #[arg(short, long = "location", value_name = "LOCATION[@REPO]")]
+    #[arg(short = 'l', long = "location", value_name = "LOCATION[@REPO]")]
     selected_locations: Vec<LocationRepo>,
     /// Do not delete any data, just show what would be done.
     #[arg(long)]
