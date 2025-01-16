@@ -36,7 +36,7 @@ impl Api {
         P: AsRef<Path>,
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo.path(), repo.key());
+        let mut cmd = self.command(repo_name, repo.path(), repo.key(), repo.options());
         cmd.arg("backup");
         if dry_run {
             cmd.arg("--dry-run");
@@ -111,7 +111,7 @@ impl Api {
     where
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo.path(), repo.key());
+        let mut cmd = self.command(repo_name, repo.path(), repo.key(), repo.options());
         cmd.arg("forget");
         if dry_run {
             cmd.arg("--dry-run");
@@ -176,8 +176,8 @@ impl Api {
         run(&mut cmd)
     }
 
-    pub fn status(&self, repo_name: &Name, repo_path: &str, key: &str) -> Result<RepoStatus> {
-        let mut cmd = self.command(repo_name, repo_path, key);
+    pub fn status(&self, repo_name: &Name, repo: &Repo) -> Result<RepoStatus> {
+        let mut cmd = self.command(repo_name, repo.path(), repo.key(), repo.options());
         cmd.arg("cat");
         cmd.arg("config");
 
@@ -194,8 +194,8 @@ impl Api {
         }
     }
 
-    pub fn init(&self, repo_name: &Name, repo_path: &str, key: &str) -> Result<()> {
-        let mut cmd = self.command(repo_name, repo_path, key);
+    pub fn init(&self, repo_name: &Name, repo: &Repo) -> Result<()> {
+        let mut cmd = self.command(repo_name, repo.path(), repo.key(), repo.options());
         cmd.arg("init");
         run(&mut cmd)
     }
@@ -205,14 +205,14 @@ impl Api {
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo.path(), repo.key());
+        let mut cmd = self.command(repo_name, repo.path(), repo.key(), repo.options());
         args.into_iter().for_each(|arg| {
             cmd.arg(arg.as_ref());
         });
         run(&mut cmd)
     }
 
-    fn command(&self, repo_name: &Name, path: &str, key: &str) -> Command {
+    fn command(&self, repo_name: &Name, path: &str, key: &str, options: &Vec<String>) -> Command {
         let env_prefix = format!("{ENV_PREFIX}_R_");
         let repo_env_prefix = format!("{}{}_", env_prefix, repo_name.as_str().to_uppercase());
 
@@ -231,6 +231,10 @@ impl Api {
         }
         if !key.is_empty() {
             cmd.env("RESTIC_PASSWORD", key);
+        }
+        for option in options {
+            cmd.arg("--option");
+            cmd.arg(option);
         }
         cmd
     }
