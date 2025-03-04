@@ -22,4 +22,4 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [build-dependencies]
-sha256 = "1.5"
+sha256 = "1.6"
