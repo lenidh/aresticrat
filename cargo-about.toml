@@ -5,6 +5,9 @@ accepted = [
     "Apache-2.0",
 ]
 
+[foldhash]
+accepted = [ "Zlib" ]
+
 [json5]
 accepted = [ "ISC" ]
 
