@@ -61,7 +61,7 @@ jobs:
     runs-on: ${{ matrix.runs-on }}
     env:
       BUILD_SKIP_GENERATE_ABOUT_HTML: true
-      BUILD_ABOUT_HTML_PATH: target/about.html
+      BUILD_ABOUT_HTML_PATH: about.html
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -78,7 +78,7 @@ jobs:
       - name: Install cargo-about
         run: cargo install --verbose --locked cargo-about@0.6.4
       - name: Generate about.html
-        run: cargo about generate --fail --config cargo-about.toml --output-file target/about.html cargo-about.hbs
+        run: cargo about generate --fail --config cargo-about.toml --output-file about.html cargo-about.hbs
       - name: Run
         if: ${{ matrix.use-cross != 'true' }}
         run: cargo test --verbose --locked --release --target ${{ matrix.target }}
