@@ -1,0 +1,5 @@
+[build.env]
+passthrough = [
+    "BUILD_ABOUT_HTML_PATH",
+    "BUILD_SKIP_GENERATE_ABOUT_HTML",
+]
