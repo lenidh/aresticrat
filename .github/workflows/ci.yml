@@ -17,37 +17,51 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Toolchain - 1.75.0
-            runs-on: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            toolchain: ${{ vars.MIN_TOOLCHAIN }}
+          # - name: Toolchain - 1.75.0
+          #   runs-on: ubuntu-latest
+          #   use-cross: false
+          #   target: x86_64-unknown-linux-gnu
+          #   toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
-          - name: Toolchain - stable
-            runs-on: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            toolchain: stable
+          # - name: Toolchain - stable
+          #   runs-on: ubuntu-latest
+          #   use-cross: false
+          #   target: x86_64-unknown-linux-gnu
+          #   toolchain: stable
 
-          - name: Toolchain - nightly
-            runs-on: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            toolchain: nightly
+          # - name: Toolchain - nightly
+          #   runs-on: ubuntu-latest
+          #   use-cross: false
+          #   target: x86_64-unknown-linux-gnu
+          #   toolchain: nightly
 
           - name: Target - Linux-x86_64
             runs-on: ubuntu-latest
+            use-cross: false
             target: x86_64-unknown-linux-gnu
             toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
-          - name: Target - Windows-x86_64
-            runs-on: windows-latest
-            target: x86_64-pc-windows-msvc
-            toolchain: ${{ vars.MIN_TOOLCHAIN }}
+          - name: Target - Linux-Aarch64
+            runs-on: ubuntu-latest
+            use-cross: true
+            target: aarch64-unknown-linux-gnu
+            toolchain: 1.81
 
-          - name: Target - macOS-x86_64
-            runs-on: macos-latest
-            target: x86_64-apple-darwin
-            toolchain: ${{ vars.MIN_TOOLCHAIN }}
+          # - name: Target - Windows-x86_64
+          #   runs-on: windows-latest
+          #   use-cross: false
+          #   target: x86_64-pc-windows-msvc
+          #   toolchain: ${{ vars.MIN_TOOLCHAIN }}
 
+          # - name: Target - macOS-x86_64
+          #   runs-on: macos-latest
+          #   use-cross: false
+          #   target: x86_64-apple-darwin
+          #   toolchain: ${{ vars.MIN_TOOLCHAIN }}
     runs-on: ${{ matrix.runs-on }}
+    env:
+      BUILD_SKIP_GENERATE_ABOUT_HTML: true
+      BUILD_ABOUT_HTML_PATH: about.html
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -63,8 +77,17 @@ jobs:
         run: rustup override set ${{steps.toolchain.outputs.name}}
       - name: Install cargo-about
         run: cargo install --verbose --locked cargo-about@0.6.4
+      - name: Generate about.html
+        run: cargo about generate --fail --config cargo-about.toml --output-file about.html cargo-about.hbs
       - name: Run
+        if: ${{ !matrix.use-cross }}
         run: cargo test --verbose --locked --release --target ${{ matrix.target }}
+      - name: Install cross
+        if: ${{ matrix.use-cross }}
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Run
+        if: ${{ matrix.use-cross }}
+        run: cross test --verbose --locked --release --target ${{ matrix.target }}
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest

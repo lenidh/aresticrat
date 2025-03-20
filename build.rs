@@ -1,4 +1,6 @@
+use std::env::VarError;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
@@ -10,18 +12,27 @@ const ABOUT_CONFIG: &str = "cargo-about.toml";
 const ABOUT_TEMPLATE: &str = "cargo-about.hbs";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("BEGIN BUILD SCRIPT");
     generate_about_html()
 }
 
 fn generate_about_html() -> Result<(), Box<dyn Error>> {
     let out_dir = std::env::var("OUT_DIR")?;
-    let about_path = PathBuf::from(&out_dir).join(ABOUT_FILE_NAME);
+    let about_path = get_env_var("BUILD_ABOUT_HTML_PATH")?
+        .map(PathBuf::from)
+        .unwrap_or(PathBuf::from(&out_dir).join(ABOUT_FILE_NAME));
     let digest_path = PathBuf::from(&out_dir).join(DIGEST_FILE_NAME);
 
     let last_digest = read_to_string_or_empty(&digest_path)?;
     let digest = compute_cargo_lock_digest()?;
 
-    if !&about_path.try_exists()? || last_digest != digest {
+    let skip = get_env_var("BUILD_SKIP_GENERATE_ABOUT_HTML")?
+        .map(str_to_bool)
+        .unwrap_or(false);
+    println!("{}", about_path.display());
+    println!("{skip}");
+    if !skip && (!&about_path.try_exists()? || last_digest != digest) {
+        print!("EXECUTE GENERATOR");
         exec_about_generator(&about_path)?;
         std::fs::write(digest_path, digest)?;
     }
@@ -51,6 +62,19 @@ where
         Err(err) if err.kind() == ErrorKind::NotFound => Ok(String::new()),
         Err(err) => Err(err),
     }
+}
+
+fn get_env_var(key: impl AsRef<OsStr>) -> Result<Option<String>, VarError> {
+    match std::env::var(key) {
+        Ok(str) => Ok(Some(str)),
+        Err(VarError::NotPresent) => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+fn str_to_bool(str: impl AsRef<str>) -> bool {
+    let str = str.as_ref().to_ascii_lowercase();
+    str == "yes" || str == "true"
 }
 
 fn exec_about_generator<P>(path: P) -> Result<(), Box<dyn Error>>
