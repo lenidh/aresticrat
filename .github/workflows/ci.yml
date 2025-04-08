@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Toolchain - 1.75.0
+          - name: Toolchain - ${{ vars.MIN_TOOLCHAIN }}
             runs-on: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             toolchain: ${{ vars.MIN_TOOLCHAIN }}
