@@ -5,14 +5,5 @@ accepted = [
     "Apache-2.0",
 ]
 
-[foldhash]
-accepted = [ "Zlib" ]
-
-[json5]
-accepted = [ "ISC" ]
-
-[tiny-keccak]
-accepted = [ "CC0-1.0" ]
-
 [unicode-ident]
 accepted = [ "Unicode-3.0" ]
