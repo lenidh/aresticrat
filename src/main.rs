@@ -79,7 +79,7 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
     let m = resolve_selection(args.selected_locations(), config)?;
 
     for (location_name, repo_names) in &m {
-        let location = &config.locations()[&location_name];
+        let location = &config.locations()[location_name];
         let _span = tracing::info_span!("Backup", location = location_name.as_str()).entered();
 
         let tag = get_tag(location_name);
