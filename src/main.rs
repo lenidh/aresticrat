@@ -26,6 +26,10 @@ fn verbosity() -> usize {
     *VERBOSITY.get().expect("Verbosity state not initialized.")
 }
 
+fn restic_verbosity() -> usize {
+    (verbosity() - DEFAULT_VERBOSITY).max(0)
+}
+
 fn init_verbosity(quiet: bool, inc: usize) {
     let mut verbosity: usize = DEFAULT_VERBOSITY;
     if quiet {
@@ -74,7 +78,7 @@ fn handle_command(args: Args) -> Result<()> {
 }
 
 fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
-    let api = restic_api::Api::new(config.executable().to_string());
+    let api = restic_api::Api::new(config.executable().to_string(), restic_verbosity());
 
     let m = resolve_selection(args.selected_locations(), config)?;
 
@@ -130,7 +134,7 @@ fn run_hooks(name: &str, hooks: &[CommandSeq]) -> Result<std::process::ExitStatu
 }
 
 fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
-    let api = restic_api::Api::new(config.executable().to_string());
+    let api = restic_api::Api::new(config.executable().to_string(), restic_verbosity());
     let mut repo_names = args.repos().to_vec();
     if (*repo_names).as_ref().is_empty() {
         repo_names = config.repos().keys().cloned().collect();
@@ -148,7 +152,7 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
 }
 
 fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
-    let api = restic_api::Api::new(config.executable().to_string());
+    let api = restic_api::Api::new(config.executable().to_string(), restic_verbosity());
 
     let m = resolve_selection(args.selected_locations(), config)?;
 
@@ -189,7 +193,7 @@ fn forget_location(
 }
 
 fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
-    let api = restic_api::Api::new(config.executable().to_string());
+    let api = restic_api::Api::new(config.executable().to_string(), restic_verbosity());
 
     for (repo_name, repo) in config.repos() {
         let status = api.status(repo_name, repo)?;

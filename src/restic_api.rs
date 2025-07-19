@@ -15,11 +15,12 @@ const BACKUP_READ_ERROR_CODE: i32 = 3;
 
 pub struct Api {
     exe: String,
+    verbosity: usize,
 }
 
 impl Api {
-    pub fn new(exe: String) -> Self {
-        Api { exe }
+    pub fn new(exe: String, verbosity: usize) -> Self {
+        Api { exe, verbosity }
     }
 
     pub fn backup<I, P, S>(
@@ -231,6 +232,9 @@ impl Api {
         }
         if !repo.key().is_empty() {
             cmd.env("RESTIC_PASSWORD", repo.key());
+        }
+        if self.verbosity > 0 {
+            cmd.arg(format!("--verbose={}", self.verbosity));
         }
         if !repo.retry_lock().is_empty() {
             cmd.arg("--retry-lock");
