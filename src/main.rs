@@ -30,7 +30,8 @@ fn verbosity() -> usize {
 }
 
 fn restic_verbosity() -> usize {
-    (verbosity() - DEFAULT_VERBOSITY).max(0)
+    let v = verbosity();
+    v - DEFAULT_VERBOSITY.min(v)
 }
 
 fn init_verbosity(quiet: bool, inc: usize) {
