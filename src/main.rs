@@ -101,11 +101,19 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
             continue;
         }
 
+        let mut successful_repo_names = Vec::new();
         for repo_name in repo_names {
             if let Some(repo) = resolve_repository(repo_name, config) {
                 print_log!(Level::INFO, "Backup to repository {repo_name} ...");
-                api.backup(&repo, location.paths(), &tag, &backup_opts, args.dry_run())?;
-                print_log!(Level::INFO, "Backup to repository {repo_name} done.");
+                match api.backup(&repo, location.paths(), &tag, &backup_opts, args.dry_run()) {
+                    Ok(_) => {
+                        print_log!(Level::INFO, "Backup to repository {repo_name} done.");
+                        successful_repo_names.push(repo_name.clone());
+                    },
+                    Err(err) => {
+                        print_log!(Level::ERROR, "Backup to repository {repo_name} failed: {err}");
+                    }
+                }
             } else {
                 print_log!(
                     Level::WARN,
@@ -115,7 +123,7 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         }
 
         if !args.dry_run() && backup_opts.forget() {
-            forget_location(&api, location_name, repo_names, config, args.dry_run())?;
+            forget_location(&api, location_name, &successful_repo_names, config, args.dry_run())?;
         }
     }
     Ok(())
@@ -139,7 +147,12 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
 
     for repo_name in (*repo_names).as_ref() {
         if let Some(repo) = resolve_repository(repo_name, config) {
-            api.exec(&repo, args.args())?;
+            match api.exec(&repo, args.args()) {
+                Ok(_) => {},
+                Err(err) => {
+                    print_log!(Level::ERROR, "Execution for repository {repo_name} failed: {err}");
+                }
+            }
         } else {
             print_log!(
                 Level::WARN,
@@ -163,10 +176,10 @@ fn forget(config: &Config, args: &ForgetArgs) -> Result<()> {
     Ok(())
 }
 
-fn forget_location(
+fn forget_location<'a, R: IntoIterator<Item = &'a Name>>(
     api: &restic_api::Api,
     location_name: &Name,
-    repo_names: &HashSet<Name>,
+    repo_names: R,
     config: &Config,
     dry_run: bool,
 ) -> Result<()> {
@@ -184,8 +197,14 @@ fn forget_location(
     for repo_name in repo_names {
         if let Some(repo) = resolve_repository(repo_name, config) {
             print_log!(Level::INFO, "Forget from repository {repo_name} ...");
-            api.forget(&repo, &tag, &forget_opts, dry_run)?;
-            print_log!(Level::INFO, "Forget from repository {repo_name} done.");
+            match api.forget(&repo, &tag, &forget_opts, dry_run) {
+                Ok(_) => {
+                    print_log!(Level::INFO, "Forget from repository {repo_name} done.");
+                }
+                Err(err) => {
+                    print_log!(Level::ERROR, "Forget from repository {repo_name} failed: {err}");
+                }
+            }
         } else {
             print_log!(
                 Level::WARN,
@@ -202,7 +221,13 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
 
     for repo_name in config.repos().keys() {
         if let Some(repo) = resolve_repository(repo_name, config) {
-            let status = api.status(&repo)?;
+            let status = match api.status(&repo) {
+                Result::Ok(status) => status,
+                Err(err) => {
+                    print_log!(Level::ERROR, "Repository {repo_name}: FAILED: {err}");
+                    continue;
+                },
+            };
 
             use restic_api::RepoStatus::*;
             match status {
