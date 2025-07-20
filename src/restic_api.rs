@@ -176,10 +176,7 @@ impl Api {
         run(&mut cmd)
     }
 
-    pub fn status(
-        &self,
-        repo: &Repository,
-    ) -> Result<RepoStatus> {
+    pub fn status(&self, repo: &Repository) -> Result<RepoStatus> {
         let mut cmd = self.command(repo);
         cmd.arg("cat");
         cmd.arg("config");
@@ -197,20 +194,13 @@ impl Api {
         }
     }
 
-    pub fn init(
-        &self,
-        repo: &Repository,
-    ) -> Result<()> {
+    pub fn init(&self, repo: &Repository) -> Result<()> {
         let mut cmd = self.command(repo);
         cmd.arg("init");
         run(&mut cmd)
     }
 
-    pub fn exec<I, S>(
-        &self,
-        repo: &Repository,
-        args: I,
-    ) -> Result<()>
+    pub fn exec<I, S>(&self, repo: &Repository, args: I) -> Result<()>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -222,10 +212,7 @@ impl Api {
         run(&mut cmd)
     }
 
-    fn command(
-        &self,
-        repo: &Repository,
-    ) -> Command {
+    fn command(&self, repo: &Repository) -> Command {
         let env_prefix = format!("{ENV_PREFIX}_R_");
         let repo_env_prefix = format!("{}{}_", env_prefix, repo.name.as_str().to_uppercase());
 

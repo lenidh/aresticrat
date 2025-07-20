@@ -109,9 +109,12 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
                     Ok(_) => {
                         print_log!(Level::INFO, "Backup to repository {repo_name} done.");
                         successful_repo_names.push(repo_name.clone());
-                    },
+                    }
                     Err(err) => {
-                        print_log!(Level::ERROR, "Backup to repository {repo_name} failed: {err}");
+                        print_log!(
+                            Level::ERROR,
+                            "Backup to repository {repo_name} failed: {err}"
+                        );
                     }
                 }
             } else {
@@ -123,7 +126,13 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         }
 
         if !args.dry_run() && backup_opts.forget() {
-            forget_location(&api, location_name, &successful_repo_names, config, args.dry_run())?;
+            forget_location(
+                &api,
+                location_name,
+                &successful_repo_names,
+                config,
+                args.dry_run(),
+            )?;
         }
     }
     Ok(())
@@ -148,9 +157,12 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
     for repo_name in (*repo_names).as_ref() {
         if let Some(repo) = resolve_repository(repo_name, config) {
             match api.exec(&repo, args.args()) {
-                Ok(_) => {},
+                Ok(_) => {}
                 Err(err) => {
-                    print_log!(Level::ERROR, "Execution for repository {repo_name} failed: {err}");
+                    print_log!(
+                        Level::ERROR,
+                        "Execution for repository {repo_name} failed: {err}"
+                    );
                 }
             }
         } else {
@@ -202,7 +214,10 @@ fn forget_location<'a, R: IntoIterator<Item = &'a Name>>(
                     print_log!(Level::INFO, "Forget from repository {repo_name} done.");
                 }
                 Err(err) => {
-                    print_log!(Level::ERROR, "Forget from repository {repo_name} failed: {err}");
+                    print_log!(
+                        Level::ERROR,
+                        "Forget from repository {repo_name} failed: {err}"
+                    );
                 }
             }
         } else {
@@ -226,7 +241,7 @@ fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
                 Err(err) => {
                     print_log!(Level::ERROR, "Repository {repo_name}: FAILED: {err}");
                     continue;
-                },
+                }
             };
 
             use restic_api::RepoStatus::*;
