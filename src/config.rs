@@ -17,6 +17,8 @@ pub struct Config {
     options: Options,
     repos: HashMap<Name, Repo>,
     locations: HashMap<Name, Location>,
+    #[serde(default)]
+    environment: Environment,
 }
 
 fn default_executable() -> String {
@@ -45,6 +47,9 @@ impl Config {
     }
     pub fn locations(&self) -> &HashMap<Name, Location> {
         &self.locations
+    }
+    pub fn environment(&self) -> &Environment {
+        &self.environment
     }
 }
 
@@ -234,6 +239,24 @@ impl ForgetOptions {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Environment {
+    #[serde(default)]
+    vars: HashMap<String, String>,
+    #[serde(default)]
+    env_files: Vec<PathBuf>,
+}
+
+impl Environment {
+    pub fn vars(&self) -> &HashMap<String, String> {
+        &self.vars
+    }
+    pub fn env_files(&self) -> &Vec<PathBuf> {
+        &self.env_files
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Repo {
@@ -245,6 +268,8 @@ pub struct Repo {
     retry_lock: String,
     #[serde(default)]
     options: Vec<String>,
+    #[serde(default)]
+    environment: Environment,
 }
 
 impl Repo {
@@ -259,6 +284,9 @@ impl Repo {
     }
     pub fn options(&self) -> &Vec<String> {
         &self.options
+    }
+    pub fn environment(&self) -> &Environment {
+        &self.environment
     }
 }
 

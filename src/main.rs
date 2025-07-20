@@ -5,12 +5,15 @@ use config::{BackupOptions, CommandSeq, Config, ForgetOptions, LocationRepo, Nam
 use std::{
     collections::{HashMap, HashSet},
     env,
-    io::{ErrorKind, IsTerminal},
+    fs::File,
+    io::{BufRead, ErrorKind, IsTerminal},
     path::{Path, PathBuf},
     sync::OnceLock,
 };
 use tracing::{level_filters::LevelFilter, Level};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+
+use crate::{config::Environment, restic_api::Repository};
 
 mod cli;
 mod config;
@@ -98,16 +101,9 @@ fn backup(config: &Config, args: &BackupArgs) -> Result<()> {
         }
 
         for repo_name in repo_names {
-            if let Some(repo) = config.repos().get(repo_name) {
+            if let Some(repo) = resolve_repository(repo_name, config) {
                 print_log!(Level::INFO, "Backup to repository {repo_name} ...");
-                api.backup(
-                    repo_name,
-                    repo,
-                    location.paths(),
-                    &tag,
-                    &backup_opts,
-                    args.dry_run(),
-                )?;
+                api.backup(&repo, location.paths(), &tag, &backup_opts, args.dry_run())?;
                 print_log!(Level::INFO, "Backup to repository {repo_name} done.");
             } else {
                 print_log!(
@@ -141,11 +137,14 @@ fn exec(config: &Config, args: &ExecArgs) -> Result<()> {
     }
 
     for repo_name in (*repo_names).as_ref() {
-        api.exec(
-            repo_name,
-            config.repos().get(repo_name).unwrap(),
-            args.args(),
-        )?;
+        if let Some(repo) = resolve_repository(repo_name, config) {
+            api.exec(&repo, args.args())?;
+        } else {
+            print_log!(
+                Level::WARN,
+                "Argument refers to an undefined repository {repo_name}."
+            )
+        }
     }
 
     Ok(())
@@ -182,10 +181,15 @@ fn forget_location(
     }
 
     for repo_name in repo_names {
-        if let Some(repo) = config.repos().get(repo_name) {
+        if let Some(repo) = resolve_repository(repo_name, config) {
             print_log!(Level::INFO, "Forget from repository {repo_name} ...");
-            api.forget(repo_name, repo, &tag, &forget_opts, dry_run)?;
+            api.forget(&repo, &tag, &forget_opts, dry_run)?;
             print_log!(Level::INFO, "Forget from repository {repo_name} done.");
+        } else {
+            print_log!(
+                Level::WARN,
+                "Location {location_name} refers to an undefined repository {repo_name}."
+            )
         }
     }
 
@@ -195,26 +199,30 @@ fn forget_location(
 fn verify(config: &Config, args: &VerifyArgs) -> Result<()> {
     let api = restic_api::Api::new(config.executable().to_string(), restic_verbosity());
 
-    for (repo_name, repo) in config.repos() {
-        let status = api.status(repo_name, repo)?;
+    for repo_name in config.repos().keys() {
+        if let Some(repo) = resolve_repository(repo_name, config) {
+            let status = api.status(&repo)?;
 
-        use restic_api::RepoStatus::*;
-        match status {
-            Ok => {
-                print_log!(Level::INFO, "Repository {repo_name}: OK")
+            use restic_api::RepoStatus::*;
+            match status {
+                Ok => {
+                    print_log!(Level::INFO, "Repository {repo_name}: OK")
+                }
+                NoRepository if args.init() => {
+                    print_log!(
+                        Level::DEBUG,
+                        "Repository {repo_name} not found. Initialize ..."
+                    );
+                    api.init(&repo)?;
+                    print_log!(Level::INFO, "Repository {repo_name}: INITIALIZED")
+                }
+                NoRepository => print_log!(Level::ERROR, "Repository {repo_name}: NOT FOUND"),
+                Locked => print_log!(Level::ERROR, "Repository {repo_name}: LOCKED"),
+                InvalidKey => print_log!(Level::ERROR, "Repository {repo_name}: INVALID KEY."),
             }
-            NoRepository if args.init() => {
-                print_log!(
-                    Level::DEBUG,
-                    "Repository {repo_name} not found. Initialize ..."
-                );
-                api.init(repo_name, repo)?;
-                print_log!(Level::INFO, "Repository {repo_name}: INITIALIZED")
-            }
-            NoRepository => print_log!(Level::ERROR, "Repository {repo_name}: NOT FOUND"),
-            Locked => print_log!(Level::ERROR, "Repository {repo_name}: LOCKED"),
-            InvalidKey => print_log!(Level::ERROR, "Repository {repo_name}: INVALID KEY."),
         }
+        // No else required here, because we resolve the repository from the
+        // definied repository configurations.
     }
 
     Ok(())
@@ -299,6 +307,57 @@ fn get_forget_options(location_name: &Name, config: &Config) -> ForgetOptions {
         .unwrap_or_default()
 }
 
+fn get_repo_env_vars(repo_name: &Name, config: &Config) -> HashMap<String, String> {
+    let mut vars = HashMap::new();
+    append_env(config.environment(), &mut vars);
+    if let Some(repo) = config.repos().get(repo_name) {
+        append_env(repo.environment(), &mut vars);
+    }
+    vars
+}
+
+fn append_env(env: &Environment, vars: &mut HashMap<String, String>) {
+    for path in env.env_files() {
+        read_env_file_to(path, vars);
+    }
+    for (k, v) in env.vars() {
+        vars.insert(k.clone(), v.clone());
+    }
+}
+
+fn read_env_file_to<P: AsRef<Path>>(path: P, vars: &mut HashMap<String, String>) {
+    let file = match File::open(&path) {
+        Ok(file) => file,
+        Err(err) => {
+            print_log!(
+                Level::WARN,
+                "Failed to read environment file {}:\n{}",
+                path.as_ref().to_string_lossy(),
+                err
+            );
+            return;
+        }
+    };
+    for (i, line) in std::io::BufReader::new(file).lines().enumerate() {
+        if let Ok(Some((k, v))) = line.map(parse_env_var) {
+            vars.insert(k, v);
+        } else {
+            print_log!(
+                Level::WARN,
+                "Invalid environment variable in {} at line {}.",
+                path.as_ref().to_string_lossy(),
+                i
+            );
+        }
+    }
+}
+
+fn parse_env_var<S: AsRef<str>>(str: S) -> Option<(String, String)> {
+    str.as_ref()
+        .split_once('=')
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+}
+
 fn resolve_selection(
     selection: &[LocationRepo],
     config: &Config,
@@ -331,6 +390,24 @@ fn resolve_selection(
     }
     m.retain(|_k, v| !v.is_empty());
     Ok(m)
+}
+
+/// Turns the repository configuration into the format that ist expected by the
+/// API.
+fn resolve_repository(repo_name: &Name, config: &Config) -> Option<Repository> {
+    if let Some(repo_config) = config.repos().get(repo_name) {
+        let env_vars = get_repo_env_vars(repo_name, config);
+        Some(Repository {
+            name: repo_name.clone(),
+            path: repo_config.path().to_string(),
+            key: repo_config.key().to_string(),
+            retry_lock: repo_config.retry_lock().to_string(),
+            options: repo_config.options().clone(),
+            environment: env_vars,
+        })
+    } else {
+        None
+    }
 }
 
 macro_rules! print_log {

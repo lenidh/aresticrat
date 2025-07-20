@@ -3,22 +3,22 @@
 #   invocation and NOT relative to the config file.
 # - Uncommented settings represent default values.
 # - Commented out settings represent optional configuration examples.
-# - Uppercase values in examples represent user defined names.
+# - Uppercase values in examples represent user-defined names.
 #
 # Special types:
 # - COMMAND: A command consists of a program name followed by any number
 #   (including none) of arguments. Values of this type have two possible forms:
-#   - a sequence of strings (exec form), e. g. [ "program", "arg1", "arg2" ].
+#   - a sequence of strings (exec form), e.g. [ "program", "arg1", "arg2" ].
 #     These strings are passed to the child process without additional
 #     processing.
-#   - a string (shell form), e. g. "program arg1 arg2". The string is processed
+#   - a string (shell form), e.g. "program arg1 arg2". The string is processed
 #     according to parsing rules of a Unix shell.
 
 # The restic executable. Must be a name in PATH or a file path.
 executable = "restic"
 
 
-# The global forget settings.
+# The global backup settings.
 # They apply to all locations that do not specify their own backup settings.
 [options.backup]
 
@@ -26,7 +26,7 @@ executable = "restic"
 forget = false
 
 # Supported exclude options.
-# These corresponds to restic options with the same names.
+# These correspond to restic options with the same names.
 exclude-caches = false
 exclude = [ ]
 iexclude = [ ]
@@ -39,10 +39,10 @@ exclude-if-present = [ ]
 ignore-ctime = false
 
 # If true, ignore inode number and ctime changes when checking for modified
-# files
+# files.
 ignore-inode = false
 
-# If true, do not run scanner to estimate size of backup
+# If true, do not run scanner to estimate size of backup.
 no-scan = false
 
 # If true, exclude other file systems, don't cross filesystem boundaries and
@@ -52,14 +52,14 @@ one-file-system = false
 # If true, skip snapshot creation if identical to parent snapshot.
 skip-if-unchanged = false
 
-# If true, use filesystem snapshot where possible (currently only Windows VSS)
+# If true, use filesystem snapshot where possible (currently only Windows VSS).
 use-fs-snapshot = false
 
-# If true, store the atime for all files and directories
+# If true, store the atime for all files and directories.
 with-atime = false
 
 # Commands that are run before a location backup is done.
-# The location will be skipped, if any of these commands does not terminate with
+# The location will be skipped if any of these commands does not terminate with
 # an exit code of 0.
 # Must be a sequence of COMMAND values.
 hooks.if =  [ ]
@@ -72,35 +72,47 @@ hooks.if =  [ ]
 # Whether to automatically run the prune command if snapshots have been removed.
 prune = false
 
-# Keep the last n snapshots
+# Keep the last n snapshots.
 #keep-last = n
-# Keep the last n hourly, daily, weekly, monthly or yearly snapshots
+# Keep the last n hourly, daily, weekly, monthly or yearly snapshots.
 #keep-hourly = n
 #keep-daily = n
 #keep-weekly = n
 #keep-monthly = n
 #keep-yearly = n
 
-# Keep snapshots that are newer than duration (eg. 1y5m7d2h) relative to the
-# latest snapshot
+# Keep snapshots that are newer than duration (e.g. 1y5m7d2h) relative to the
+# latest snapshot.
 #keep-within = duration
 # Keep hourly, daily, weekly, monthly or yearly snapshots that are newer than
-# duration (eg. 1y5m7d2h) relative to the latest snapshot
+# duration (e.g. 1y5m7d2h) relative to the latest snapshot.
 #keep-within-hourly = duration
 #keep-within-daily = duration
 #keep-within-weekly = duration
 #keep-within-monthly = duration
 #keep-within-yearly = duration
 
-# Keep snapshots with this taglist
+# Keep snapshots with this tag list.
 keep-tag = [ ]
 
 # Commands that are run before a location forget is done.
-# The location will be skipped, if any of these commands does not terminate with
+# The location will be skipped if any of these commands does not terminate with
 # an exit code of 0.
 # This hook is not executed if the forget is done as part of a backup.
 # Must be a sequence of COMMAND values.
 hooks.if =  [ ]
+
+
+# The environment variables that will be applied to all repositories unless they
+# overwrite these values.
+# Note that variables defined here cannot alter the configuration, so
+# ARESTICRAT_ variables will have no effect. Instead, define them exactly as you
+# would when passing them directly to restic (e.g., RESTIC_PASSWORD instead of
+# ARESTICRAT_R_SOMEREPO_RESTIC_PASSWORD).
+[environment]
+env-files = [ ]
+#vars.VAR1=foo
+#vars.VAR2=bar
 
 
 
@@ -170,12 +182,20 @@ hooks.if =  [ ]
 # configuration or the CLI.
 #[repos.REPOSITORY]
 
-# The path ot this repository. That's the value that would be passed to restics
+# The path to this repository. That's the value that would be passed to restic's
 # -r/--repo option.
 #path = "a/restic/repository/path"
 
 # The repository key (password).
 #key = "unique_long_secret_value"
+
+# Repository-specific environment variables. Note that environment files listed
+# in this section are added to those defined globally.
+#[repos.REPOSITORY.environment]
+#env-files = [ ]
+#vars.VAR1=foo
+#vars.VAR2=bar
+
 
 
 # EXAMPLE: Local repository.

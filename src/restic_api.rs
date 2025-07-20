@@ -1,9 +1,9 @@
 use crate::config::BackupOptions;
 use crate::config::ForgetOptions;
 use crate::config::Name;
-use crate::config::Repo;
 use crate::run;
 use crate::ENV_PREFIX;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
@@ -25,8 +25,7 @@ impl Api {
 
     pub fn backup<I, P, S>(
         &self,
-        repo_name: &Name,
-        repo: &Repo,
+        repo: &Repository,
         paths: I,
         tag: S,
         options: &BackupOptions,
@@ -37,7 +36,7 @@ impl Api {
         P: AsRef<Path>,
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo);
+        let mut cmd = self.command(repo);
         cmd.arg("backup");
         if dry_run {
             cmd.arg("--dry-run");
@@ -103,8 +102,7 @@ impl Api {
 
     pub fn forget<S>(
         &self,
-        repo_name: &Name,
-        repo: &Repo,
+        repo: &Repository,
         tag: S,
         options: &ForgetOptions,
         dry_run: bool,
@@ -112,7 +110,7 @@ impl Api {
     where
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo);
+        let mut cmd = self.command(repo);
         cmd.arg("forget");
         if dry_run {
             cmd.arg("--dry-run");
@@ -177,8 +175,11 @@ impl Api {
         run(&mut cmd)
     }
 
-    pub fn status(&self, repo_name: &Name, repo: &Repo) -> Result<RepoStatus> {
-        let mut cmd = self.command(repo_name, repo);
+    pub fn status(
+        &self,
+        repo: &Repository,
+    ) -> Result<RepoStatus> {
+        let mut cmd = self.command(repo);
         cmd.arg("cat");
         cmd.arg("config");
 
@@ -195,27 +196,37 @@ impl Api {
         }
     }
 
-    pub fn init(&self, repo_name: &Name, repo: &Repo) -> Result<()> {
-        let mut cmd = self.command(repo_name, repo);
+    pub fn init(
+        &self,
+        repo: &Repository,
+    ) -> Result<()> {
+        let mut cmd = self.command(repo);
         cmd.arg("init");
         run(&mut cmd)
     }
 
-    pub fn exec<I, S>(&self, repo_name: &Name, repo: &Repo, args: I) -> Result<()>
+    pub fn exec<I, S>(
+        &self,
+        repo: &Repository,
+        args: I,
+    ) -> Result<()>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
-        let mut cmd = self.command(repo_name, repo);
+        let mut cmd = self.command(repo);
         args.into_iter().for_each(|arg| {
             cmd.arg(arg.as_ref());
         });
         run(&mut cmd)
     }
 
-    fn command(&self, repo_name: &Name, repo: &Repo) -> Command {
+    fn command(
+        &self,
+        repo: &Repository,
+    ) -> Command {
         let env_prefix = format!("{ENV_PREFIX}_R_");
-        let repo_env_prefix = format!("{}{}_", env_prefix, repo_name.as_str().to_uppercase());
+        let repo_env_prefix = format!("{}{}_", env_prefix, repo.name.as_str().to_uppercase());
 
         let vars = std::env::vars()
             .map(|(mut k, v)| {
@@ -227,20 +238,21 @@ impl Api {
         let mut cmd = std::process::Command::new(&self.exe);
         cmd.env_clear();
         cmd.envs(vars);
-        if !repo.path().is_empty() {
-            cmd.env("RESTIC_REPOSITORY", repo.path());
+        cmd.envs(&repo.environment);
+        if !repo.path.is_empty() {
+            cmd.env("RESTIC_REPOSITORY", &repo.path);
         }
-        if !repo.key().is_empty() {
-            cmd.env("RESTIC_PASSWORD", repo.key());
+        if !repo.key.is_empty() {
+            cmd.env("RESTIC_PASSWORD", &repo.key);
         }
         if self.verbosity > 0 {
             cmd.arg(format!("--verbose={}", self.verbosity));
         }
-        if !repo.retry_lock().is_empty() {
+        if !repo.retry_lock.is_empty() {
             cmd.arg("--retry-lock");
-            cmd.arg(repo.retry_lock());
+            cmd.arg(&repo.retry_lock);
         }
-        for option in repo.options() {
+        for option in &repo.options {
             cmd.arg("--option");
             cmd.arg(option);
         }
@@ -290,4 +302,13 @@ pub enum Error {
     },
     #[error("{0}")]
     IoError(#[from] std::io::Error),
+}
+
+pub struct Repository {
+    pub name: Name,
+    pub path: String,
+    pub key: String,
+    pub retry_lock: String,
+    pub options: Vec<String>,
+    pub environment: HashMap<String, String>,
 }
