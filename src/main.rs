@@ -400,7 +400,9 @@ fn resolve_repository(repo_name: &Name, config: &Config) -> Option<Repository> {
         Some(Repository {
             name: repo_name.clone(),
             path: repo_config.path().to_string(),
-            key: repo_config.key().to_string(),
+            password: repo_config.password().to_string(),
+            password_file: repo_config.password_file().map(Path::to_path_buf),
+            password_command: repo_config.password_command().to_string(),
             retry_lock: repo_config.retry_lock().to_string(),
             options: repo_config.options().clone(),
             environment: env_vars,

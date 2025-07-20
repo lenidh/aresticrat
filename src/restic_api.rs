@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::process::ExitStatus;
 use thiserror::Error;
@@ -242,9 +243,16 @@ impl Api {
         if !repo.path.is_empty() {
             cmd.env("RESTIC_REPOSITORY", &repo.path);
         }
-        if !repo.key.is_empty() {
-            cmd.env("RESTIC_PASSWORD", &repo.key);
+        if !repo.password.is_empty() {
+            cmd.env("RESTIC_PASSWORD", &repo.password);
         }
+        if let Some(path) = &repo.password_file {
+            cmd.env("RESTIC_PASSWORD_FILE", path);
+        }
+        if !repo.password_command.is_empty() {
+            cmd.env("RESTIC_PASSWORD_COMMAND", &repo.password_command);
+        }
+        cmd.env("RESTIC_PROGRESS_FPS", "0.016666");
         if self.verbosity > 0 {
             cmd.arg(format!("--verbose={}", self.verbosity));
         }
@@ -307,7 +315,9 @@ pub enum Error {
 pub struct Repository {
     pub name: Name,
     pub path: String,
-    pub key: String,
+    pub password: String,
+    pub password_file: Option<PathBuf>,
+    pub password_command: String,
     pub retry_lock: String,
     pub options: Vec<String>,
     pub environment: HashMap<String, String>,

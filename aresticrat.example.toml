@@ -186,8 +186,13 @@ env-files = [ ]
 # -r/--repo option.
 #path = "a/restic/repository/path"
 
-# The repository key (password).
-#key = "unique_long_secret_value"
+# The repository key (password). Any of the following options will work. For
+# better security, prefer passing the password via password-file or
+# password-command instead of storing it in plaintext here.
+#password = "unique_long_secret_value"
+#key = "unique_long_secret_value" # (deprecated, use password instead)
+#password-file = "path/to/secret/file"
+#password-command = "bash -c cat /path/to/secret/file"
 
 # Repository-specific environment variables. Note that environment files listed
 # in this section are added to those defined globally.
@@ -201,10 +206,10 @@ env-files = [ ]
 # EXAMPLE: Local repository.
 #[repos.local]
 #path = "/backup/restic-repo"
-#key = "secret_local_repo_key"
+#password = "secret_local_repo_key"
 
 
 # EXAMPLE: Remote repository.
 #[repos.remote]
 #path = "sftp:user@host:/srv/restic-repo"
-#key = "secret_sftp_repo_key"
+#password = "secret_sftp_repo_key"

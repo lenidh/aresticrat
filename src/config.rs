@@ -262,8 +262,12 @@ impl Environment {
 pub struct Repo {
     #[serde(default)]
     path: String,
+    #[serde(default, alias = "key")]
+    password: String,
     #[serde(default)]
-    key: String,
+    password_file: Option<PathBuf>,
+    #[serde(default)]
+    password_command: String,
     #[serde(default)]
     retry_lock: String,
     #[serde(default)]
@@ -276,8 +280,14 @@ impl Repo {
     pub fn path(&self) -> &str {
         &self.path
     }
-    pub fn key(&self) -> &str {
-        &self.key
+    pub fn password(&self) -> &str {
+        &self.password
+    }
+    pub fn password_file(&self) -> Option<&Path> {
+        self.password_file.as_deref()
+    }
+    pub fn password_command(&self) -> &str {
+        &self.password_command
     }
     pub fn retry_lock(&self) -> &str {
         &self.retry_lock
