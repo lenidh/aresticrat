@@ -10,8 +10,8 @@ use std::{
     path::{Path, PathBuf},
     sync::OnceLock,
 };
-use tracing::{level_filters::LevelFilter, Level};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer};
+use tracing::{Level, level_filters::LevelFilter};
+use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{config::Environment, restic_api::Repository};
 

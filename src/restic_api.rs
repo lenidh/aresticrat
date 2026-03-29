@@ -1,8 +1,8 @@
+use crate::ENV_PREFIX;
 use crate::config::BackupOptions;
 use crate::config::ForgetOptions;
 use crate::config::Name;
 use crate::run;
-use crate::ENV_PREFIX;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::ffi::OsString;
